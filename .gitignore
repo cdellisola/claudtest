@@ -1,0 +1,6 @@
+# File generati
+output/
+
+# Il font non va committato (licenza uso personale) — vedi fonts/README.md
+fonts/*.ttf
+fonts/*.otf

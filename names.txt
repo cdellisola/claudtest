@@ -1,0 +1,6 @@
+# Un nome per riga. Le righe vuote e quelle che iniziano con # vengono ignorate.
+# Modifica questo elenco con i nomi che vuoi generare.
+Mario
+Anna
+Luca
+Sofia

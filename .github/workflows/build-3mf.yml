@@ -1,0 +1,66 @@
+name: Build 3MF name tags
+
+on:
+  workflow_dispatch:
+    inputs:
+      names:
+        description: "Nomi separati da virgola (vuoto = usa names.txt)"
+        required: false
+        default: ""
+  push:
+    branches: [ "**" ]
+    paths:
+      - "name_tag.scad"
+      - "names.txt"
+      - "generate.sh"
+      - ".github/workflows/build-3mf.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install OpenSCAD
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openscad xvfb fontconfig
+
+      - name: Fetch Waltograph font
+        env:
+          WALTOGRAPH_URL: ${{ secrets.WALTOGRAPH_URL }}
+        run: |
+          mkdir -p fonts
+          if [ -n "${WALTOGRAPH_URL:-}" ]; then
+            curl -fL -o fonts/waltograph.ttf "$WALTOGRAPH_URL"
+            echo "Font scaricato dal segreto WALTOGRAPH_URL."
+          elif [ -f fonts/waltograph.ttf ]; then
+            echo "Font gia' presente nel repo."
+          else
+            echo "::warning::Nessun font Waltograph disponibile: verra' usato un font di ripiego."
+          fi
+
+      - name: Generate 3MF
+        env:
+          NAMES_INPUT: ${{ github.event.inputs.names }}
+        run: |
+          chmod +x generate.sh
+          if [ -n "${NAMES_INPUT:-}" ]; then
+            IFS=',' read -ra ARR <<< "$NAMES_INPUT"
+            NAMES=()
+            for n in "${ARR[@]}"; do
+              trimmed="$(printf '%s' "$n" | sed 's/^ *//;s/ *$//')"
+              [ -n "$trimmed" ] && NAMES+=("$trimmed")
+            done
+            xvfb-run -a ./generate.sh "${NAMES[@]}"
+          else
+            xvfb-run -a ./generate.sh
+          fi
+
+      - name: Upload 3MF artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: name-tags-3mf
+          path: output/*.3mf
+          if-no-files-found: error
