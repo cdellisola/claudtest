@@ -4,3 +4,8 @@ output/
 # Il font non va committato (licenza uso personale) — vedi fonts/README.md
 fonts/*.ttf
 fonts/*.otf
+
+# Web app (Vite)
+webapp/node_modules/
+webapp/dist/
+webapp/package-lock.json

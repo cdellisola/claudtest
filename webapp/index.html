@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Name Tag Generator — 3MF</title>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="controls">
+        <h1>Name Tag → 3MF</h1>
+
+        <label class="field">
+          <span>Testo (una riga per rigo)</span>
+          <textarea id="text" rows="3">NAME</textarea>
+        </label>
+
+        <label class="field">
+          <span>Font</span>
+          <select id="font"></select>
+        </label>
+
+        <label class="field">
+          <span>Carica un font .ttf (es. Waltograph)</span>
+          <input id="fontfile" type="file" accept=".ttf,.otf" />
+        </label>
+
+        <div class="grid">
+          <label class="field">
+            <span>Dimensione testo (mm)</span>
+            <input id="fontSize" type="number" value="20" min="4" step="1" />
+          </label>
+          <label class="field">
+            <span>Altezza testo (mm)</span>
+            <input id="textHeight" type="number" value="2" min="0.2" step="0.1" />
+          </label>
+          <label class="field">
+            <span>Altezza base (mm)</span>
+            <input id="plateHeight" type="number" value="3" min="0.4" step="0.1" />
+          </label>
+          <label class="field">
+            <span>Bordo base (mm)</span>
+            <input id="borderSize" type="number" value="3" min="0.5" step="0.1" />
+          </label>
+          <label class="field">
+            <span>Spessore contorno (mm)</span>
+            <input id="outlineSize" type="number" value="1" min="0.2" step="0.1" />
+          </label>
+          <label class="field">
+            <span>Altezza contorno (mm)</span>
+            <input id="outlineHeight" type="number" value="0.8" min="0.2" step="0.1" />
+          </label>
+        </div>
+
+        <div class="toggles">
+          <label><input id="useBase" type="checkbox" checked /> Base</label>
+          <label><input id="useOutline" type="checkbox" checked /> Contorno</label>
+        </div>
+
+        <div class="colors">
+          <label class="field">
+            <span>Base</span>
+            <input id="baseColor" type="color" value="#f7f7f5" />
+          </label>
+          <label class="field">
+            <span>Contorno</span>
+            <input id="outlineColor" type="color" value="#add8e6" />
+          </label>
+          <label class="field">
+            <span>Testo</span>
+            <input id="textColor" type="color" value="#d8b7ff" />
+          </label>
+        </div>
+
+        <button id="download" disabled>Scarica .3mf</button>
+        <p id="status" class="status"></p>
+        <p class="hint">
+          Trascina il mouse per ruotare, rotella per zoom. Il .3mf è multicolore:
+          ogni colore va su uno slot filamento nello slicer.
+        </p>
+      </aside>
+
+      <main class="preview-wrap">
+        <canvas id="preview"></canvas>
+      </main>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

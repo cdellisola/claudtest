@@ -1,0 +1,23 @@
+{
+  "name": "name-tag-webapp",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser-based name-tag to multicolor 3MF generator (Waltograph-ready, GitHub Pages).",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "fflate": "^0.8.3",
+    "manifold-3d": "^3.0.1",
+    "three": "^0.171.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.171.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5"
+  }
+}
