@@ -1,5 +1,13 @@
 import './style.css';
-import { fonts, importFont, textToRings } from './fonts';
+import {
+  fonts,
+  importFontFile,
+  loadDefaultFonts,
+  loadUserFonts,
+  removeUserFont,
+  textToRings,
+  type FontOption,
+} from './fonts';
 import { Viewer } from './viewer';
 import { downloadThreeMF } from './threemf';
 import type { Part, TagParams, RGB, BuildResponse } from './types';
@@ -13,6 +21,8 @@ const viewer = new Viewer($<HTMLCanvasElement>('preview'));
 let lastParts: Part[] = [];
 let ready = false;
 let buildTimer: number | undefined;
+let selectedFontId = 'helvetiker';
+let userPickedFont = false;
 
 const statusEl = $('status');
 const setStatus = (s: string) => (statusEl.textContent = s);
@@ -24,10 +34,7 @@ const hexToRgb = (h: string): RGB => {
 
 const num = (id: string) => parseFloat($<HTMLInputElement>(id).value);
 const checked = (id: string) => $<HTMLInputElement>(id).checked;
-const currentFont = () => {
-  const id = $<HTMLSelectElement>('font').value;
-  return fonts.find((f) => f.id === id) ?? fonts[0];
-};
+const currentFont = (): FontOption => fonts.find((f) => f.id === selectedFontId) ?? fonts[0];
 
 function params(): TagParams {
   return {
@@ -39,6 +46,9 @@ function params(): TagParams {
     outlineHeight: num('outlineHeight'),
     useBase: checked('useBase'),
     useOutline: checked('useOutline'),
+    keychain: checked('keychain'),
+    keychainRing: num('keychainRing'),
+    keychainHole: num('keychainHole'),
     baseColor: hexToRgb($<HTMLInputElement>('baseColor').value),
     outlineColor: hexToRgb($<HTMLInputElement>('outlineColor').value),
     textColor: hexToRgb($<HTMLInputElement>('textColor').value),
@@ -84,25 +94,88 @@ worker.onmessage = (e: MessageEvent<BuildResponse>) => {
   }
 };
 
-function refreshFontSelect(selectId?: string) {
-  const sel = $<HTMLSelectElement>('font');
-  sel.innerHTML = '';
+// --- Custom font dropdown with previews ---
+const trigger = $<HTMLButtonElement>('fontTrigger');
+const panel = $('fontPanel');
+
+function renderFontList() {
+  const cur = currentFont();
+  trigger.textContent = cur.name;
+  trigger.style.fontFamily = cur.cssFamily;
+
+  panel.innerHTML = '';
   for (const f of fonts) {
-    const o = document.createElement('option');
-    o.value = f.id;
-    o.textContent = f.name;
-    sel.appendChild(o);
+    const item = document.createElement('div');
+    item.className = 'font-item' + (f.id === selectedFontId ? ' selected' : '');
+
+    const label = document.createElement('span');
+    label.className = 'label';
+    label.textContent = f.name;
+    label.style.fontFamily = f.cssFamily;
+    item.appendChild(label);
+
+    if (f.user) {
+      const remove = document.createElement('button');
+      remove.className = 'remove';
+      remove.type = 'button';
+      remove.title = 'Rimuovi questo font';
+      remove.textContent = '✕';
+      remove.addEventListener('click', async (ev) => {
+        ev.stopPropagation();
+        const wasSelected = f.id === selectedFontId;
+        await removeUserFont(f);
+        if (wasSelected) {
+          selectedFontId = fonts[0]?.id ?? 'helvetiker';
+          build();
+        }
+        renderFontList();
+      });
+      item.appendChild(remove);
+    } else if (f.id !== 'helvetiker') {
+      const badge = document.createElement('span');
+      badge.className = 'badge';
+      badge.textContent = 'OFL';
+      item.appendChild(badge);
+    }
+
+    item.addEventListener('click', () => {
+      selectedFontId = f.id;
+      userPickedFont = true;
+      panel.classList.add('hidden');
+      renderFontList();
+      build();
+    });
+
+    panel.appendChild(item);
   }
-  if (selectId) sel.value = selectId;
 }
 
-// --- Wire up controls ---
-refreshFontSelect();
+trigger.addEventListener('click', () => panel.classList.toggle('hidden'));
+document.addEventListener('click', (e) => {
+  if (!$('fontDropdown').contains(e.target as Node)) panel.classList.add('hidden');
+});
 
+/** Auto-select a nice default (Coiny) once it has loaded, unless the user chose one. */
+function maybeAutoSelect() {
+  if (userPickedFont) return;
+  const pick = fonts.find((f) => f.name === 'Coiny') ?? fonts.find((f) => f.id.startsWith('def-'));
+  if (pick && pick.id !== selectedFontId) {
+    selectedFontId = pick.id;
+    build();
+  }
+}
+
+function onFontLoaded() {
+  maybeAutoSelect();
+  renderFontList();
+}
+
+// --- Wire up numeric / color / toggle controls ---
 for (const id of [
   'text', 'fontSize', 'textHeight', 'plateHeight', 'borderSize',
   'outlineSize', 'outlineHeight', 'useBase', 'useOutline',
-  'baseColor', 'outlineColor', 'textColor', 'font',
+  'keychain', 'keychainRing', 'keychainHole',
+  'baseColor', 'outlineColor', 'textColor',
 ]) {
   const el = $(id);
   el.addEventListener('input', scheduleBuild);
@@ -114,13 +187,20 @@ $<HTMLInputElement>('fontfile').addEventListener('change', async (ev) => {
   if (!file) return;
   setStatus('Carico il font…');
   try {
-    const opt = await importFont(file);
-    refreshFontSelect(opt.id);
-    setStatus('Font caricato: ' + opt.name);
-    build();
+    const opt = await importFontFile(file);
+    if (opt) {
+      selectedFontId = opt.id;
+      userPickedFont = true;
+      renderFontList();
+      setStatus('Font caricato e salvato: ' + opt.name);
+      build();
+    } else {
+      setStatus('Font non valido.');
+    }
   } catch (e: any) {
     setStatus('Font non valido: ' + e.message);
   }
+  (ev.target as HTMLInputElement).value = '';
 });
 
 $<HTMLButtonElement>('download').addEventListener('click', () => {
@@ -130,4 +210,8 @@ $<HTMLButtonElement>('download').addEventListener('click', () => {
   downloadThreeMF(lastParts, safe + '.3mf');
 });
 
-setStatus('Inizializzo il motore 3D…');
+// --- Boot ---
+renderFontList();
+setStatus('Inizializzo il motore 3D e carico i font…');
+loadUserFonts(onFontLoaded);
+loadDefaultFonts(onFontLoaded);

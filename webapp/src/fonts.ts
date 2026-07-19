@@ -1,9 +1,13 @@
-// Font handling: a built-in default font (bundled with three.js — no file to
-// commit) plus runtime upload of any .ttf (this is how you load Waltograph).
-// A font is turned into 2D outline rings (outer contour + holes) in millimetres.
+// Font handling:
+//  - a built-in default font (bundled with three.js, always available)
+//  - a set of Google Fonts (OFL) fetched from public/fonts/ (downloaded at build)
+//  - user-uploaded .ttf/.otf, persisted in IndexedDB so they survive reloads
+// Each font also gets a CSS @font-face family so the dropdown can preview it.
 import { FontLoader, Font } from 'three/examples/jsm/loaders/FontLoader.js';
 import { TTFLoader } from 'three/examples/jsm/loaders/TTFLoader.js';
 import helvetiker from 'three/examples/fonts/helvetiker_regular.typeface.json';
+import defaultFonts from './default-fonts.json';
+import { loadStoredFonts, storeFont, deleteStoredFont } from './fontstore';
 import type { Ring } from './types';
 
 const fontLoader = new FontLoader();
@@ -13,28 +17,109 @@ export interface FontOption {
   id: string;
   name: string;
   font: Font;
+  cssFamily: string; // family used for the dropdown preview
+  user?: boolean; // uploaded by the user (removable)
+  storeId?: string; // key in IndexedDB (user fonts only)
 }
 
-export const fonts: FontOption[] = [
-  { id: 'helvetiker', name: 'Standard (Helvetiker)', font: fontLoader.parse(helvetiker as any) },
-];
+export const fonts: FontOption[] = [];
 
-let uploadCounter = 0;
+let faceSeq = 0;
 
-/** Parse a user-provided .ttf (e.g. Waltograph) and add it to the list. */
-export async function importFont(file: File): Promise<FontOption> {
+function injectFace(family: string, url: string) {
+  const style = document.createElement('style');
+  style.textContent = `@font-face{font-family:'${family}';src:url('${url}') format('truetype');font-display:swap;}`;
+  document.head.appendChild(style);
+}
+
+// The three.js typeface JSON has no .ttf to preview with, so it renders in the
+// UI's own font. It stays as a guaranteed fallback.
+fonts.push({
+  id: 'helvetiker',
+  name: 'Standard',
+  font: fontLoader.parse(helvetiker as any),
+  cssFamily: 'inherit',
+});
+
+function addTtf(
+  id: string,
+  name: string,
+  buf: ArrayBuffer,
+  opts: { user?: boolean; storeId?: string } = {},
+): FontOption | null {
+  try {
+    const json = ttfLoader.parse(buf);
+    const font = fontLoader.parse(json);
+    const family = `ntf_${++faceSeq}`;
+    const url = URL.createObjectURL(new Blob([buf], { type: 'font/ttf' }));
+    injectFace(family, url);
+    const option: FontOption = { id, name, font, cssFamily: family, ...opts };
+    fonts.push(option);
+    return option;
+  } catch (e) {
+    console.warn(`Font non caricato: ${name}`, e);
+    return null;
+  }
+}
+
+/** Fetch the bundled Google Fonts. Calls onLoaded after each one appears. */
+export async function loadDefaultFonts(onLoaded?: () => void): Promise<void> {
+  const base = import.meta.env.BASE_URL || '/';
+  const list = defaultFonts as { slug: string; name: string }[];
+  for (const f of list) {
+    try {
+      const res = await fetch(`${base}fonts/${f.slug}.ttf`);
+      if (!res.ok) continue;
+      const buf = await res.arrayBuffer();
+      if (addTtf(`def-${f.slug}`, f.name, buf)) onLoaded?.();
+    } catch {
+      /* skip missing font */
+    }
+  }
+}
+
+/** Restore user fonts from IndexedDB. */
+export async function loadUserFonts(onLoaded?: () => void): Promise<void> {
+  const stored = await loadStoredFonts();
+  for (const s of stored) {
+    if (addTtf(`user-${s.id}`, s.name, s.buffer, { user: true, storeId: s.id })) {
+      onLoaded?.();
+    }
+  }
+}
+
+/** Import a user-selected font file and persist it. */
+export async function importFontFile(file: File): Promise<FontOption | null> {
   const buf = await file.arrayBuffer();
-  const json: any = ttfLoader.parse(buf);
-  const font = fontLoader.parse(json);
-  const name = json.familyName || file.name.replace(/\.[^.]+$/, '') || 'Font caricato';
-  const option: FontOption = { id: `upload-${++uploadCounter}`, name, font };
-  fonts.push(option);
+  const name = file.name.replace(/\.[^.]+$/, '') || 'Font caricato';
+  const storeId = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const option = addTtf(`user-${storeId}`, name, buf, { user: true, storeId });
+  if (option) {
+    try {
+      await storeFont({ id: storeId, name, buffer: buf });
+    } catch (e) {
+      console.warn('Impossibile salvare il font nel browser', e);
+    }
+  }
   return option;
+}
+
+/** Remove a user font (from the list and from IndexedDB). */
+export async function removeUserFont(option: FontOption): Promise<void> {
+  const i = fonts.indexOf(option);
+  if (i >= 0) fonts.splice(i, 1);
+  if (option.storeId) {
+    try {
+      await deleteStoredFont(option.storeId);
+    } catch {
+      /* ignore */
+    }
+  }
 }
 
 /**
  * Convert (possibly multi-line) text into a flat list of 2D rings, centred on
- * the origin and expressed in millimetres. Y is up.
+ * the origin, in millimetres. Y is up.
  */
 export function textToRings(text: string, font: Font, sizeMm: number, lineSpacing = 1.35): Ring[] {
   const lines = text.split('\n');
@@ -44,7 +129,6 @@ export function textToRings(text: string, font: Font, sizeMm: number, lineSpacin
 
   for (const rawLine of lines) {
     const value = rawLine.trim();
-    y -= 0; // keep readable; advance happens at the end of the loop
     if (value) {
       const shapes = font.generateShapes(value, sizeMm);
       const lineRings: Ring[] = [];
@@ -75,7 +159,6 @@ export function textToRings(text: string, font: Font, sizeMm: number, lineSpacin
         }
       }
 
-      // Centre this line horizontally and place it at the current Y.
       const offX = isFinite(lminX) ? -((lminX + lmaxX) / 2) : 0;
       for (const ring of lineRings) {
         for (const pt of ring) {
@@ -90,7 +173,6 @@ export function textToRings(text: string, font: Font, sizeMm: number, lineSpacin
 
   if (!all.length) return [];
 
-  // Centre the whole block vertically around the origin.
   let minY = Infinity;
   let maxY = -Infinity;
   for (const ring of all) {

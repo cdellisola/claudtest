@@ -9,3 +9,7 @@ fonts/*.otf
 webapp/node_modules/
 webapp/dist/
 webapp/package-lock.json
+
+# Default fonts are downloaded at build time (OFL, Google Fonts), not committed
+webapp/public/fonts/*.ttf
+webapp/public/fonts/*.otf

@@ -5,7 +5,10 @@
   "type": "module",
   "description": "Browser-based name-tag to multicolor 3MF generator (Waltograph-ready, GitHub Pages).",
   "scripts": {
+    "fonts": "node scripts/download-fonts.mjs",
+    "predev": "node scripts/download-fonts.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/download-fonts.mjs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"

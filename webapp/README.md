@@ -14,12 +14,20 @@ ma con codice originale e geometria da targhetta (base + contorno + testo).
   proprio slot filamento → Bambu Studio / OrcaSlicer / MakerWorld lo aprono già
   colorato.
 
-## Font Waltograph
+## Font
 
-Il font **non** è incluso (licenza uso personale). La pagina parte con un font
-di default e ha un campo **"Carica un font .ttf"**: seleziona lì il tuo
-`waltograph.ttf` e verrà usato subito. È il modo pulito per avere lo stile
-Disney senza problemi di licenza sul repo.
+- **Font di default:** un set di Google Fonts (licenza **OFL**) — Coiny, Chewy,
+  Sour Gummy, DynaPuff, Carter One, Bubblegum Sans, Archivo, Alkatra, Pacifico,
+  Lobster e altri. Non sono committati: vengono **scaricati in fase di build** da
+  `scripts/download-fonts.mjs` (hook `prebuild`/`predev`) nella cartella
+  `public/fonts/`. Il menù a tendina mostra ogni nome **nell'anteprima del font**.
+- **Font personali (upload):** il campo *"Carica un font .ttf/.otf"* accetta
+  qualsiasi font (es. **Waltograph**). Viene salvato in **IndexedDB** del browser,
+  quindi resta selezionabile nel menù anche riaprendo il sito. Waltograph non è
+  incluso nel repo per la sua licenza (uso personale): si carica così.
+- **Elenco font:** modificabile in `src/default-fonts.json` (`slug`, `name`,
+  `path` nel repo `google/fonts`). Un font che non si scarica viene semplicemente
+  saltato, senza far fallire la build.
 
 ## Sviluppo locale
 

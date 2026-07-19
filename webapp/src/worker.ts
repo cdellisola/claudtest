@@ -1,8 +1,8 @@
 // Geometry worker: owns the Manifold WASM kernel so all CSG happens off the main
-// thread. Text rings in -> three coloured, watertight mesh parts out.
+// thread. Text rings in -> coloured, watertight mesh parts out.
 import Module from 'manifold-3d';
 import wasmUrl from 'manifold-3d/manifold.wasm?url';
-import type { BuildRequest, Part, RGB } from './types';
+import type { BuildRequest, Part, RGB, Ring } from './types';
 
 let wasmPromise: Promise<any> | null = null;
 async function getWasm(): Promise<any> {
@@ -27,6 +27,19 @@ function meshToPart(solid: any, name: string, color: RGB): Part {
   };
 }
 
+function ringsBBox(rings: Ring[]) {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const r of rings) {
+    for (const [x, y] of r) {
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  }
+  return { minX, minY, maxX, maxY };
+}
+
 self.onmessage = async (e: MessageEvent<BuildRequest>) => {
   const msg = e.data;
   if (msg.type !== 'build') return;
@@ -39,7 +52,7 @@ self.onmessage = async (e: MessageEvent<BuildRequest>) => {
 
     const parts: Part[] = [];
     const cleanup: any[] = [];
-    const track = <T>(o: T): T => {
+    const track = <T,>(o: T): T => {
       cleanup.push(o);
       return o;
     };
@@ -50,10 +63,42 @@ self.onmessage = async (e: MessageEvent<BuildRequest>) => {
     const baseCS = track(textCS.offset(border, 'Round', 2, 0));
 
     // BASE (grown outline, full plate height, from Z=0).
-    if (params.useBase) {
-      const baseSolid = track(Manifold.extrude(baseCS, params.plateHeight));
-      parts.push(meshToPart(baseSolid, 'base', params.baseColor));
+    let baseSolid: any = params.useBase ? track(Manifold.extrude(baseCS, params.plateHeight)) : null;
+
+    // KEYCHAIN loop at the top-left, fused to the base.
+    if (params.keychain) {
+      const bb = ringsBBox(rings);
+      const R = Math.max(1, params.keychainRing / 2);
+      const hR = Math.max(0.5, Math.min(R - 0.8, params.keychainHole / 2));
+      const gap = 1;
+      // Loop centre: up and slightly left of the top-left of the text block.
+      const cxLoop = bb.minX - R * 0.3;
+      const cyLoop = bb.maxY + border + gap + R;
+      // Annulus (ring).
+      const outer = track(CrossSection.circle(R, 64).translate([cxLoop, cyLoop]));
+      const inner = track(CrossSection.circle(hR, 48).translate([cxLoop, cyLoop]));
+      const annulus = track(outer.subtract(inner));
+      // Bridge connecting the loop down into the base material (the top-left letters).
+      const bridgeTop = cyLoop;
+      const bridgeBottom = bb.maxY - params.fontSizeMm * 0.3; // reach into the first line
+      const bridgeLen = Math.max(1, bridgeTop - bridgeBottom);
+      const bridgeW = Math.max(2, R * 0.9);
+      const bridge = track(
+        CrossSection.square([bridgeW, bridgeLen], true).translate([
+          cxLoop,
+          (bridgeTop + bridgeBottom) / 2,
+        ]),
+      );
+      const loopCS = track(annulus.add(bridge));
+      const loopSolid = track(Manifold.extrude(loopCS, params.plateHeight));
+      if (baseSolid) {
+        baseSolid = track(baseSolid.add(loopSolid));
+      } else {
+        baseSolid = loopSolid;
+      }
     }
+
+    if (baseSolid) parts.push(meshToPart(baseSolid, 'base', params.baseColor));
 
     // RAISED OUTLINE ring on top of the base.
     if (params.useOutline) {
@@ -69,7 +114,6 @@ self.onmessage = async (e: MessageEvent<BuildRequest>) => {
     const textSolid = track(textRaw.translate([0, 0, params.plateHeight]));
     parts.push(meshToPart(textSolid, 'text', params.textColor));
 
-    // Free WASM handles.
     for (const o of cleanup) o?.delete?.();
 
     const transfer: Transferable[] = [];

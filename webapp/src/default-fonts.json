@@ -1,0 +1,21 @@
+[
+  { "slug": "coiny",         "name": "Coiny",          "path": "ofl/coiny/Coiny-Regular.ttf" },
+  { "slug": "chewy",         "name": "Chewy",          "path": "ofl/chewy/Chewy-Regular.ttf" },
+  { "slug": "sourgummy",     "name": "Sour Gummy",     "path": "ofl/sourgummy/SourGummy[wdth,wght].ttf" },
+  { "slug": "dynapuff",      "name": "DynaPuff",       "path": "ofl/dynapuff/DynaPuff[wdth,wght].ttf" },
+  { "slug": "carterone",     "name": "Carter One",     "path": "ofl/carterone/CarterOne-Regular.ttf" },
+  { "slug": "bubblegumsans", "name": "Bubblegum Sans", "path": "ofl/bubblegumsans/BubblegumSans-Regular.ttf" },
+  { "slug": "archivo",       "name": "Archivo",        "path": "ofl/archivo/Archivo[wdth,wght].ttf" },
+  { "slug": "alkatra",       "name": "Alkatra",        "path": "ofl/alkatra/Alkatra[wght].ttf" },
+  { "slug": "pacifico",      "name": "Pacifico",       "path": "ofl/pacifico/Pacifico-Regular.ttf" },
+  { "slug": "lobster",       "name": "Lobster",        "path": "ofl/lobster/Lobster-Regular.ttf" },
+  { "slug": "fredoka",       "name": "Fredoka",        "path": "ofl/fredoka/Fredoka[wdth,wght].ttf" },
+  { "slug": "baloo2",        "name": "Baloo 2",        "path": "ofl/baloo2/Baloo2[wght].ttf" },
+  { "slug": "luckiestguy",   "name": "Luckiest Guy",   "path": "ofl/luckiestguy/LuckiestGuy-Regular.ttf" },
+  { "slug": "bangers",       "name": "Bangers",        "path": "ofl/bangers/Bangers-Regular.ttf" },
+  { "slug": "bungee",        "name": "Bungee",         "path": "ofl/bungee/Bungee-Regular.ttf" },
+  { "slug": "righteous",     "name": "Righteous",      "path": "ofl/righteous/Righteous-Regular.ttf" },
+  { "slug": "sigmarone",     "name": "Sigmar One",     "path": "ofl/sigmarone/SigmarOne-Regular.ttf" },
+  { "slug": "titanone",      "name": "Titan One",      "path": "ofl/titanone/TitanOne-Regular.ttf" },
+  { "slug": "comfortaa",     "name": "Comfortaa",      "path": "ofl/comfortaa/Comfortaa[wght].ttf" }
+]

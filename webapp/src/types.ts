@@ -13,6 +13,9 @@ export interface TagParams {
   outlineHeight: number;
   useBase: boolean;
   useOutline: boolean;
+  keychain: boolean;
+  keychainRing: number; // outer diameter of the loop, mm
+  keychainHole: number; // hole diameter, mm
   baseColor: RGB;
   outlineColor: RGB;
   textColor: RGB;
