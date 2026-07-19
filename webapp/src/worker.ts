@@ -100,9 +100,11 @@ self.onmessage = async (e: MessageEvent<BuildRequest>) => {
 
     if (baseSolid) parts.push(meshToPart(baseSolid, 'base', params.baseColor));
 
-    // RAISED OUTLINE ring on top of the base.
+    // RAISED OUTLINE: a uniform band along the OUTER perimeter of the base only.
+    // Shrinking the base inward (instead of following the text) keeps the outline
+    // on the external contour and never traces around the individual letters.
     if (params.useOutline) {
-      const innerCS = track(textCS.offset(border - params.outlineSize, 'Round', 2, 0));
+      const innerCS = track(baseCS.offset(-params.outlineSize, 'Round', 2, 0));
       const outlineCS = track(baseCS.subtract(innerCS));
       const raw = track(Manifold.extrude(outlineCS, Math.max(0.01, params.outlineHeight)));
       const outlineSolid = track(raw.translate([0, 0, params.plateHeight]));
