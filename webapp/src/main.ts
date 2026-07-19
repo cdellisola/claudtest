@@ -5,7 +5,7 @@ import {
   loadDefaultFonts,
   loadUserFonts,
   removeUserFont,
-  textToRings,
+  textToGlyphs,
   type FontOption,
 } from './fonts';
 import { Viewer } from './viewer';
@@ -59,19 +59,19 @@ function build() {
   if (!ready) return;
   const text = $<HTMLTextAreaElement>('text').value;
   const p = params();
-  let rings;
+  let glyphs;
   try {
-    rings = textToRings(text, currentFont().font, p.fontSizeMm);
+    glyphs = textToGlyphs(text, currentFont().font, p.fontSizeMm);
   } catch (e: any) {
     setStatus('Errore font: ' + e.message);
     return;
   }
-  if (!rings.length) {
+  if (!glyphs.length) {
     setStatus('Scrivi un nome…');
     return;
   }
   setStatus('Genero la geometria…');
-  worker.postMessage({ type: 'build', rings, params: p });
+  worker.postMessage({ type: 'build', glyphs, params: p });
 }
 
 function scheduleBuild() {

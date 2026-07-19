@@ -30,7 +30,10 @@ export interface Part {
   triVerts: Uint32Array;
 }
 
-export type BuildRequest = { type: 'build'; rings: Ring[]; params: TagParams };
+// glyphs: one entry per glyph, each a group of rings (outer contour + holes).
+// Keeping glyphs grouped lets the worker union them so overlapping cursive
+// letters fuse instead of cancelling out.
+export type BuildRequest = { type: 'build'; glyphs: Ring[][]; params: TagParams };
 
 export type BuildResponse =
   | { type: 'ready' }

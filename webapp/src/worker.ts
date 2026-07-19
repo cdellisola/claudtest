@@ -27,14 +27,16 @@ function meshToPart(solid: any, name: string, color: RGB): Part {
   };
 }
 
-function ringsBBox(rings: Ring[]) {
+function glyphsBBox(glyphs: Ring[][]) {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (const r of rings) {
-    for (const [x, y] of r) {
-      if (x < minX) minX = x;
-      if (x > maxX) maxX = x;
-      if (y < minY) minY = y;
-      if (y > maxY) maxY = y;
+  for (const g of glyphs) {
+    for (const r of g) {
+      for (const [x, y] of r) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
     }
   }
   return { minX, minY, maxX, maxY };
@@ -46,9 +48,9 @@ self.onmessage = async (e: MessageEvent<BuildRequest>) => {
   try {
     const w = await getWasm();
     const { CrossSection, Manifold } = w;
-    const { rings, params } = msg;
+    const { glyphs, params } = msg;
 
-    if (!rings.length) throw new Error('Nessun contorno di testo.');
+    if (!glyphs.length) throw new Error('Nessun contorno di testo.');
 
     const parts: Part[] = [];
     const cleanup: any[] = [];
@@ -57,8 +59,15 @@ self.onmessage = async (e: MessageEvent<BuildRequest>) => {
       return o;
     };
 
-    // 2D sections (EvenOdd handles letter holes like "o", "a", "e").
-    const textCS = track(new CrossSection(rings, 'EvenOdd'));
+    // Build each glyph on its own (EvenOdd resolves its counters like "o"/"a"),
+    // then UNION all glyphs so overlapping cursive letters fuse into solid
+    // material instead of cancelling out and leaving voids.
+    let textCS: any = null;
+    for (const glyph of glyphs) {
+      const cs = track(new CrossSection(glyph, 'EvenOdd'));
+      textCS = textCS ? track(textCS.add(cs)) : cs;
+    }
+    if (!textCS) throw new Error('Nessun contorno di testo.');
     const border = params.borderSize;
     const baseCS = track(textCS.offset(border, 'Round', 2, 0));
 
@@ -67,7 +76,7 @@ self.onmessage = async (e: MessageEvent<BuildRequest>) => {
 
     // KEYCHAIN loop at the top-left, fused to the base.
     if (params.keychain) {
-      const bb = ringsBBox(rings);
+      const bb = glyphsBBox(glyphs);
       const R = Math.max(1, params.keychainRing / 2);
       const hR = Math.max(0.5, Math.min(R - 0.8, params.keychainHole / 2));
       const gap = 1;

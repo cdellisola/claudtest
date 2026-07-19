@@ -118,12 +118,14 @@ export async function removeUserFont(option: FontOption): Promise<void> {
 }
 
 /**
- * Convert (possibly multi-line) text into a flat list of 2D rings, centred on
- * the origin, in millimetres. Y is up.
+ * Convert (possibly multi-line) text into GLYPHS — one entry per glyph, each a
+ * group of rings (outer contour + holes). Centred on the origin, in mm, Y up.
+ * Keeping glyphs separate lets the worker union them, so overlapping cursive
+ * letters fuse instead of cancelling out.
  */
-export function textToRings(text: string, font: Font, sizeMm: number, lineSpacing = 1.35): Ring[] {
+export function textToGlyphs(text: string, font: Font, sizeMm: number, lineSpacing = 1.35): Ring[][] {
   const lines = text.split('\n');
-  const all: Ring[] = [];
+  const glyphs: Ring[][] = [];
   const lineHeight = sizeMm * lineSpacing;
   let y = 0;
 
@@ -131,12 +133,13 @@ export function textToRings(text: string, font: Font, sizeMm: number, lineSpacin
     const value = rawLine.trim();
     if (value) {
       const shapes = font.generateShapes(value, sizeMm);
-      const lineRings: Ring[] = [];
+      const lineGlyphs: Ring[][] = [];
       let lminX = Infinity;
       let lmaxX = -Infinity;
 
       for (const shape of shapes) {
         const pts = shape.extractPoints(12);
+        const glyph: Ring[] = [];
         if (pts.shape.length >= 3) {
           const ring: Ring = [];
           for (const p of pts.shape) {
@@ -144,7 +147,7 @@ export function textToRings(text: string, font: Font, sizeMm: number, lineSpacin
             if (p.x < lminX) lminX = p.x;
             if (p.x > lmaxX) lmaxX = p.x;
           }
-          lineRings.push(ring);
+          glyph.push(ring);
         }
         for (const hole of pts.holes) {
           if (hole.length >= 3) {
@@ -154,37 +157,44 @@ export function textToRings(text: string, font: Font, sizeMm: number, lineSpacin
               if (p.x < lminX) lminX = p.x;
               if (p.x > lmaxX) lmaxX = p.x;
             }
-            lineRings.push(ring);
+            glyph.push(ring);
           }
         }
+        if (glyph.length) lineGlyphs.push(glyph);
       }
 
       const offX = isFinite(lminX) ? -((lminX + lmaxX) / 2) : 0;
-      for (const ring of lineRings) {
-        for (const pt of ring) {
-          pt[0] += offX;
-          pt[1] += y;
+      for (const glyph of lineGlyphs) {
+        for (const ring of glyph) {
+          for (const pt of ring) {
+            pt[0] += offX;
+            pt[1] += y;
+          }
         }
+        glyphs.push(glyph);
       }
-      all.push(...lineRings);
     }
     y -= lineHeight;
   }
 
-  if (!all.length) return [];
+  if (!glyphs.length) return [];
 
   let minY = Infinity;
   let maxY = -Infinity;
-  for (const ring of all) {
-    for (const pt of ring) {
-      if (pt[1] < minY) minY = pt[1];
-      if (pt[1] > maxY) maxY = pt[1];
+  for (const glyph of glyphs) {
+    for (const ring of glyph) {
+      for (const pt of ring) {
+        if (pt[1] < minY) minY = pt[1];
+        if (pt[1] > maxY) maxY = pt[1];
+      }
     }
   }
   const cy = (minY + maxY) / 2;
-  for (const ring of all) {
-    for (const pt of ring) pt[1] -= cy;
+  for (const glyph of glyphs) {
+    for (const ring of glyph) {
+      for (const pt of ring) pt[1] -= cy;
+    }
   }
 
-  return all;
+  return glyphs;
 }
