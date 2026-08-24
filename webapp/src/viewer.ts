@@ -14,8 +14,6 @@ export class Viewer {
   private tc: TransformControls;
   private group: THREE.Group | null = null;
   private grid: THREE.GridHelper;
-  private shadowPlane: THREE.Mesh;
-  private key: THREE.DirectionalLight;
   private gridEnabled = false;
   private centerOffset = new THREE.Vector3();
   private raycaster = new THREE.Raycaster();
@@ -32,13 +30,9 @@ export class Viewer {
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0f1116);
+    this.scene.background = new THREE.Color(0x15151a);
 
     this.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 40000);
     this.camera.up.set(0, 0, 1);
@@ -47,36 +41,14 @@ export class Viewer {
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
 
-    // Lighting: low ambient + hemisphere + a strong shadow-casting key + fill.
-    this.scene.add(new THREE.AmbientLight(0xffffff, 0.28));
-    const hemi = new THREE.HemisphereLight(0xdfe6ff, 0x2a2a33, 0.55);
-    this.scene.add(hemi);
-    this.key = new THREE.DirectionalLight(0xffffff, 1.35);
-    this.key.position.set(180, -160, 480);
-    this.key.castShadow = true;
-    this.key.shadow.mapSize.set(2048, 2048);
-    const cam = this.key.shadow.camera as THREE.OrthographicCamera;
-    cam.near = 1;
-    cam.far = 2500;
-    cam.left = -500;
-    cam.right = 500;
-    cam.top = 500;
-    cam.bottom = -500;
-    this.key.shadow.bias = -0.0005;
-    this.scene.add(this.key);
-    this.scene.add(this.key.target);
-    const fill = new THREE.DirectionalLight(0xbcd0ff, 0.35);
-    fill.position.set(-160, 120, 120);
+    // Even, shadow-free lighting → smooth, clean surfaces (no self-shadow acne).
+    this.scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+    const key = new THREE.DirectionalLight(0xffffff, 0.85);
+    key.position.set(80, -120, 220);
+    this.scene.add(key);
+    const fill = new THREE.DirectionalLight(0xffffff, 0.35);
+    fill.position.set(-90, 90, 70);
     this.scene.add(fill);
-
-    // Soft contact shadow catcher on the plate plane.
-    this.shadowPlane = new THREE.Mesh(
-      new THREE.PlaneGeometry(4000, 4000),
-      new THREE.ShadowMaterial({ opacity: 0.32 }),
-    );
-    this.shadowPlane.position.z = -0.1;
-    this.shadowPlane.receiveShadow = true;
-    this.scene.add(this.shadowPlane);
 
     this.grid = new THREE.GridHelper(600, 60, 0x556070, 0x2c333d);
     this.grid.rotation.x = Math.PI / 2;
@@ -110,7 +82,6 @@ export class Viewer {
   setGrid(enabled: boolean) {
     this.gridEnabled = enabled;
     this.grid.visible = enabled;
-    this.shadowPlane.visible = enabled;
   }
 
   selectGizmo(id: string) {
@@ -257,7 +228,7 @@ export class Viewer {
 
       const mat = new THREE.MeshStandardMaterial({
         color: new THREE.Color(p.colorRgb[0] / 255, p.colorRgb[1] / 255, p.colorRgb[2] / 255),
-        roughness: 0.5,
+        roughness: 0.6,
         metalness: 0.0,
         transparent: isPreview,
         opacity: isPreview ? p.opacity ?? 0.7 : 1,
@@ -265,12 +236,7 @@ export class Viewer {
       });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.userData.preview = isPreview;
-      if (!isPreview) {
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-      } else {
-        mesh.renderOrder = 10;
-      }
+      if (isPreview) mesh.renderOrder = 10;
 
       if (p.gizmo) {
         mesh.userData.gizmoId = p.gizmo;
@@ -339,7 +305,6 @@ export class Viewer {
       this.camera.position.set(target.x, target.y - maxd * 1.7, target.z + maxd * 1.3);
       this.controls.target.copy(target);
       this.controls.update();
-      this.key.target.position.copy(target);
     } else {
       group.position.copy(this.centerOffset);
     }

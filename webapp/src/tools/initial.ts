@@ -1,4 +1,4 @@
-import { fonts, textToGlyphs, attachFloatingMarks, firstLetterUpper } from '../fonts';
+import { fonts, textToGlyphs, firstLetterUpper } from '../fonts';
 import { createFontPicker, type FontPicker } from '../fontPicker';
 import type { Tool, ToolApi } from '../tool';
 import type { BuildRequest, Magnet, RGB } from '../types';
@@ -158,9 +158,7 @@ export function createInitialTool(): Tool {
       if (!first) return null;
 
       const initialGlyphs = textToGlyphs(first, initFont.font, num('in-isize'), 1);
-      const nameGlyphs = attachFloatingMarks(
-        textToGlyphs(q<HTMLInputElement>('in-name').value, nameFont.font, num('in-nsize'), 1),
-      );
+      const nameGlyphs = textToGlyphs(q<HTMLInputElement>('in-name').value, nameFont.font, num('in-nsize'), 1);
 
       const d = num('in-magd');
       const h = num('in-magh');
