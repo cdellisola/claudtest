@@ -85,6 +85,13 @@ export class Viewer {
     this.grid.visible = enabled;
   }
 
+  /** Select a gizmo part by id (e.g. from the sidebar) to show its axes. */
+  selectGizmo(id: string) {
+    this.selectedGizmoId = id;
+    const m = this.gizmoMeshes.find((x) => x.userData.gizmoId === id);
+    if (m) this.tc.attach(m);
+  }
+
   private selectedMesh(): THREE.Mesh | null {
     return (this.tc.object as THREE.Mesh) ?? null;
   }
@@ -206,15 +213,19 @@ export class Viewer {
       geo.setAttribute('position', new THREE.BufferAttribute(p.vertProperties, 3));
       geo.setIndex(new THREE.BufferAttribute(p.triVerts, 1));
       geo.computeVertexNormals();
+      const isPreview = p.preview === true;
       const mat = new THREE.MeshStandardMaterial({
         color: new THREE.Color(p.colorRgb[0] / 255, p.colorRgb[1] / 255, p.colorRgb[2] / 255),
-        roughness: 0.65,
+        roughness: 0.5,
         metalness: 0.0,
-        transparent: p.preview === true,
-        opacity: p.preview ? p.opacity ?? 0.6 : 1,
+        transparent: isPreview,
+        opacity: isPreview ? p.opacity ?? 0.7 : 1,
+        // Preview markers draw on top so they stay visible even inside the letter.
+        depthTest: !isPreview,
       });
       const mesh = new THREE.Mesh(geo, mat);
-      mesh.userData.preview = p.preview === true;
+      mesh.userData.preview = isPreview;
+      if (isPreview) mesh.renderOrder = 10;
       if (p.gizmoPos) mesh.position.set(p.gizmoPos[0], p.gizmoPos[1], p.gizmoPos[2]);
       if (p.drag) {
         mesh.userData.dragId = p.drag;
@@ -247,24 +258,23 @@ export class Viewer {
         if (mesh.geometry.boundingBox) bb.union(mesh.geometry.boundingBox);
       }
     }
+    const size = new THREE.Vector3();
+    bb.getSize(size);
+    const maxd = Math.max(size.x, size.y, size.z) || 60;
     if (recenter) {
+      const target = new THREE.Vector3(0, 0, 0);
       if (this.gridEnabled) {
-        const size = new THREE.Vector3();
-        bb.getSize(size);
-        const snap = (min: number, span: number) => -min - Math.round(span / 2 / 10) * 10;
-        this.centerOffset.set(snap(bb.min.x, size.x), snap(bb.min.y, size.y), -bb.min.z);
+        // Letter base starts at the grid origin (0,0); drop to the plate.
+        this.centerOffset.set(-bb.min.x, -bb.min.y, -bb.min.z);
+        target.set(size.x / 2, size.y / 2, size.z / 2);
       } else {
         const c = new THREE.Vector3();
         bb.getCenter(c);
         this.centerOffset.set(-c.x, -c.y, -c.z);
       }
       group.position.copy(this.centerOffset);
-
-      const size = new THREE.Vector3();
-      bb.getSize(size);
-      const maxd = Math.max(size.x, size.y, size.z) || 60;
-      this.camera.position.set(0, -maxd * 1.7, maxd * 1.3);
-      this.controls.target.set(0, 0, 0);
+      this.camera.position.set(target.x, target.y - maxd * 1.7, target.z + maxd * 1.3);
+      this.controls.target.copy(target);
       this.controls.update();
     } else {
       group.position.copy(this.centerOffset);

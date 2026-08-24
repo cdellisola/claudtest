@@ -1,6 +1,6 @@
 import { fonts, textToGlyphs, attachFloatingMarks, firstLetterUpper } from '../fonts';
 import { createFontPicker, type FontPicker } from '../fontPicker';
-import type { Tool } from '../tool';
+import type { Tool, ToolApi } from '../tool';
 import type { BuildRequest, Magnet, RGB } from '../types';
 
 const hexToRgb = (h: string): RGB => {
@@ -16,6 +16,7 @@ export function createInitialTool(): Tool {
   let namePicker: FontPicker;
   let initialPicker: FontPicker;
   let onChangeCb: () => void = () => {};
+  let apiRef: ToolApi | null = null;
   let magnets: Magnet[] = [];
   const q = <T extends HTMLElement = HTMLElement>(id: string) => root.querySelector<T>('#' + id)!;
   const num = (id: string) => parseFloat(q<HTMLInputElement>(id).value);
@@ -26,7 +27,8 @@ export function createInitialTool(): Tool {
     const qx = size * 0.22;
     const xs = [-qx, qx, -qx, qx];
     const ys = [qx, qx, -qx, -qx];
-    return { x: xs[i % 4], y: ys[i % 4], z: 2, d: 8, h: 2 };
+    // z is relative to the initial's top surface (0 = surface, -2 = 2 mm inside).
+    return { x: xs[i % 4], y: ys[i % 4], z: -2, d: 8, h: 2 };
   }
 
   function syncMagnetCount() {
@@ -48,12 +50,18 @@ export function createInitialTool(): Tool {
     magnets.forEach((m, i) => {
       const row = document.createElement('div');
       row.className = 'mag-row';
-      row.innerHTML = `<span class="mag-tag">#${i + 1}</span>
+      row.innerHTML = `<button type="button" class="mag-tag" data-sel="${i}" title="Seleziona in anteprima">#${i + 1}</button>
         <label>X<input type="number" step="1" value="${m.x}" data-i="${i}" data-k="x" /></label>
         <label>Y<input type="number" step="1" value="${m.y}" data-i="${i}" data-k="y" /></label>
         <label>Z<input type="number" step="0.5" value="${m.z}" data-i="${i}" data-k="z" /></label>`;
       box.appendChild(row);
     });
+    box.querySelectorAll('button.mag-tag').forEach((el) =>
+      el.addEventListener('click', (ev) => {
+        const i = Number((ev.currentTarget as HTMLElement).dataset.sel);
+        apiRef?.selectGizmo(`magnet:${i}`);
+      }),
+    );
     box.querySelectorAll('input').forEach((el) =>
       el.addEventListener('input', (ev) => {
         const t = ev.target as HTMLInputElement;
@@ -72,11 +80,12 @@ export function createInitialTool(): Tool {
     available: true,
     usesGrid: true,
 
-    mount(body, onChange) {
+    mount(body, onChange, api) {
       root = body;
       onChangeCb = onChange;
+      apiRef = api;
       body.innerHTML = `
-        <label class="field"><span>Nome</span><input id="in-name" type="text" value="Genny" /></label>
+        <label class="field"><span>Nome</span><input id="in-name" type="text" value="Sofia" /></label>
         <div class="field"><span>Font nome (corsivo)</span><div id="in-namefont"></div></div>
         <div class="field"><span>Font iniziale (serif)</span><div id="in-initfont"></div></div>
 
@@ -179,7 +188,10 @@ export function createInitialTool(): Tool {
     onGizmoLive(id, x, y, z) {
       const i = Number(id.split(':')[1]);
       if (!magnets[i]) return;
-      magnets[i] = { ...magnets[i], x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, z: Math.round(z * 10) / 10 };
+      const r = (v: number) => Math.round(v * 10) / 10;
+      // The gizmo reports world Z; store it relative to the initial's top surface.
+      const zRel = z - num('in-ithick');
+      magnets[i] = { ...magnets[i], x: r(x), y: r(y), z: r(zRel) };
       const box = q('in-maglist');
       const set = (k: string, v: number) => {
         const el = box.querySelector<HTMLInputElement>(`input[data-i="${i}"][data-k="${k}"]`);

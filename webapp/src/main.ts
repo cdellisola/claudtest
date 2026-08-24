@@ -121,7 +121,7 @@ function activate(tool: Tool) {
   toolArea.append(back, title, bodyEl);
 
   viewer.setGrid(!!tool.usesGrid);
-  tool.mount(bodyEl, scheduleBuild);
+  tool.mount(bodyEl, scheduleBuild, { selectGizmo: (id) => viewer.selectGizmo(id) });
   build(true);
 }
 

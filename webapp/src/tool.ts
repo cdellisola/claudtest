@@ -1,12 +1,18 @@
 import type { BuildRequest, Part } from './types';
 
+/** Portal-provided helpers a tool can call. */
+export interface ToolApi {
+  /** Select a gizmo part (e.g. a magnet) in the preview to show its axes. */
+  selectGizmo(id: string): void;
+}
+
 export interface Tool {
   id: string;
   name: string;
   subtitle: string;
   available: boolean;
   /** Build the controls into `body` and wire them to `onChange`. */
-  mount(body: HTMLElement, onChange: () => void): void;
+  mount(body: HTMLElement, onChange: () => void, api: ToolApi): void;
   /** Read the current UI into a worker request (or null if incomplete). */
   buildRequest(): BuildRequest | null;
   /** Suggested download file name (without extension). */

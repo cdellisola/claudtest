@@ -230,12 +230,14 @@ function buildInitial(w: any, msg: Extract<BuildRequest, { tool: 'initial' }>): 
     namePiece = track(track(Manifold.extrude(pieceCS, p.nameThickness)).translate([0, 0, pocketZ]));
   }
 
-  // Magnet pockets: cylindrical voids carved into the initial (at their position).
+  // Magnet pockets: cylindrical voids carved into the initial. m.z is measured
+  // from the TOP surface of the initial (0 = surface, negative = into material).
+  const worldZ = (m: (typeof p.magnets)[number]) => p.initialThickness + m.z;
   const voidOf = (m: (typeof p.magnets)[number]) =>
     track(
       track(
         Manifold.extrude(track(CrossSection.circle(Math.max(0.5, m.d / 2), 40).translate([m.x, m.y])), Math.max(0.2, m.h)),
-      ).translate([0, 0, m.z - m.h / 2]),
+      ).translate([0, 0, worldZ(m) - m.h / 2]),
     );
   for (const m of p.magnets) initial = track(initial.subtract(voidOf(m)));
 
@@ -249,11 +251,11 @@ function buildInitial(w: any, msg: Extract<BuildRequest, { tool: 'initial' }>): 
     const h = Math.max(0.2, m.h);
     const marker = track(track(Manifold.extrude(track(CrossSection.circle(r, 40)), h)).translate([0, 0, -h / 2]));
     parts.push({
-      ...meshToPart(marker, `magnete_${i + 1}`, [120, 120, 135]),
+      ...meshToPart(marker, `magnete_${i + 1}`, [150, 150, 165]),
       gizmo: `magnet:${i}`,
-      gizmoPos: [m.x, m.y, m.z],
+      gizmoPos: [m.x, m.y, worldZ(m)],
       preview: true,
-      opacity: 0.6,
+      opacity: 0.7,
     });
   });
 
