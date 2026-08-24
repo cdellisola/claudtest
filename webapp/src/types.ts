@@ -28,12 +28,42 @@ export interface Part {
   numProp: number;
   vertProperties: Float32Array;
   triVerts: Uint32Array;
+  /** If set, this part can be dragged in the preview (id passed back on drop). */
+  drag?: string;
+}
+
+/** Parameters for the interlocking-text tool (Insult3D style, all mm). */
+export interface InterlockParams {
+  spessore2: number; // central block thickness (base)
+  spessore1: number; // top text thickness
+  spessore3: number; // bottom text thickness
+  profondita: number; // how deep texts 1/3 sink into text 2
+  tolleranza: number; // extra offset so parts interlock with a gap
+  size1: number;
+  size2: number;
+  size3: number;
+  posX1: number;
+  posY1: number;
+  posX3: number;
+  posY3: number;
+  color1: RGB;
+  color2: RGB;
+  color3: RGB;
 }
 
 // glyphs: one entry per glyph, each a group of rings (outer contour + holes).
 // Keeping glyphs grouped lets the worker union them so overlapping cursive
 // letters fuse instead of cancelling out.
-export type BuildRequest = { type: 'build'; glyphs: Ring[][]; params: TagParams };
+export type BuildRequest =
+  | { type: 'build'; tool: 'nametag'; glyphs: Ring[][]; params: TagParams }
+  | {
+      type: 'build';
+      tool: 'interlock';
+      g1: Ring[][];
+      g2: Ring[][];
+      g3: Ring[][];
+      params: InterlockParams;
+    };
 
 export type BuildResponse =
   | { type: 'ready' }
