@@ -230,6 +230,8 @@ export class Viewer {
         color: new THREE.Color(p.colorRgb[0] / 255, p.colorRgb[1] / 255, p.colorRgb[2] / 255),
         roughness: 0.6,
         metalness: 0.0,
+        // Flat shading → crisp, flat panels instead of the smeared "wrinkled" look.
+        flatShading: !isPreview,
         transparent: isPreview,
         opacity: isPreview ? p.opacity ?? 0.7 : 1,
         depthTest: !isPreview,

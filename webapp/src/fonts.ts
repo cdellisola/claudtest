@@ -145,7 +145,8 @@ export function textToGlyphs(
       const lineGlyphs: Ring[][] = [];
 
       for (const shape of shapes) {
-        const pts = shape.extractPoints(12);
+        // Higher curve resolution → finer, more regular facets on rounded letters.
+        const pts = shape.extractPoints(24);
         const glyph: Ring[] = [];
         if (pts.shape.length >= 3) glyph.push(pts.shape.map((p) => [p.x, p.y] as [number, number]));
         for (const hole of pts.holes) {
