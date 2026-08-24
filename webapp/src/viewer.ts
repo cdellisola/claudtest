@@ -1,5 +1,6 @@
 // three.js preview: orbit, XY drag-to-move (interlock), a 3-axis gizmo for
-// selectable parts (magnets), and an optional 10 mm print grid.
+// selectable parts (magnets / initial / name), a 10 mm print grid, and soft
+// shadows for a more solid look.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
@@ -13,26 +14,31 @@ export class Viewer {
   private tc: TransformControls;
   private group: THREE.Group | null = null;
   private grid: THREE.GridHelper;
+  private shadowPlane: THREE.Mesh;
+  private key: THREE.DirectionalLight;
   private gridEnabled = false;
   private centerOffset = new THREE.Vector3();
   private raycaster = new THREE.Raycaster();
   private draggable: THREE.Mesh[] = [];
   private gizmoMeshes: THREE.Mesh[] = [];
   private selectedGizmoId: string | null = null;
+  private downPos = { x: 0, y: 0 };
+  private pendingSelect: string | null = null;
 
-  /** XY drag (interlock) released, delta in mm. */
   onDrag: ((id: string, dx: number, dy: number) => void) | null = null;
-  /** Gizmo moved (live), absolute mm. */
   onGizmoChange: ((id: string, x: number, y: number, z: number) => void) | null = null;
-  /** Gizmo drag finished, absolute mm. */
   onGizmoCommit: ((id: string, x: number, y: number, z: number) => void) | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.05;
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x15151a);
+    this.scene.background = new THREE.Color(0x0f1116);
 
     this.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 40000);
     this.camera.up.set(0, 0, 1);
@@ -41,21 +47,42 @@ export class Viewer {
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
 
-    this.scene.add(new THREE.AmbientLight(0xffffff, 0.75));
-    const key = new THREE.DirectionalLight(0xffffff, 0.9);
-    key.position.set(60, -90, 160);
-    this.scene.add(key);
-    const fill = new THREE.DirectionalLight(0xffffff, 0.35);
-    fill.position.set(-70, 70, 60);
+    // Lighting: low ambient + hemisphere + a strong shadow-casting key + fill.
+    this.scene.add(new THREE.AmbientLight(0xffffff, 0.28));
+    const hemi = new THREE.HemisphereLight(0xdfe6ff, 0x2a2a33, 0.55);
+    this.scene.add(hemi);
+    this.key = new THREE.DirectionalLight(0xffffff, 1.35);
+    this.key.position.set(180, -160, 480);
+    this.key.castShadow = true;
+    this.key.shadow.mapSize.set(2048, 2048);
+    const cam = this.key.shadow.camera as THREE.OrthographicCamera;
+    cam.near = 1;
+    cam.far = 2500;
+    cam.left = -500;
+    cam.right = 500;
+    cam.top = 500;
+    cam.bottom = -500;
+    this.key.shadow.bias = -0.0005;
+    this.scene.add(this.key);
+    this.scene.add(this.key.target);
+    const fill = new THREE.DirectionalLight(0xbcd0ff, 0.35);
+    fill.position.set(-160, 120, 120);
     this.scene.add(fill);
 
-    // 10 mm grid on the XY plane (z = 0), hidden until a tool asks for it.
+    // Soft contact shadow catcher on the plate plane.
+    this.shadowPlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(4000, 4000),
+      new THREE.ShadowMaterial({ opacity: 0.32 }),
+    );
+    this.shadowPlane.position.z = -0.1;
+    this.shadowPlane.receiveShadow = true;
+    this.scene.add(this.shadowPlane);
+
     this.grid = new THREE.GridHelper(600, 60, 0x556070, 0x2c333d);
     this.grid.rotation.x = Math.PI / 2;
     this.grid.visible = false;
     this.scene.add(this.grid);
 
-    // 3-axis translate gizmo for selectable parts.
     this.tc = new TransformControls(this.camera, this.renderer.domElement);
     this.tc.setMode('translate');
     this.tc.setSpace('world');
@@ -83,29 +110,38 @@ export class Viewer {
   setGrid(enabled: boolean) {
     this.gridEnabled = enabled;
     this.grid.visible = enabled;
+    this.shadowPlane.visible = enabled;
   }
 
-  /** Select a gizmo part by id (e.g. from the sidebar) to show its axes. */
   selectGizmo(id: string) {
     this.selectedGizmoId = id;
     const m = this.gizmoMeshes.find((x) => x.userData.gizmoId === id);
-    if (m) this.tc.attach(m);
+    if (m) this.attachTo(m);
   }
 
-  private selectedMesh(): THREE.Mesh | null {
-    return (this.tc.object as THREE.Mesh) ?? null;
+  private attachTo(mesh: THREE.Mesh) {
+    const axes: string = mesh.userData.gizmoAxes ?? 'xyz';
+    this.tc.showX = true;
+    this.tc.showY = true;
+    this.tc.showZ = axes.includes('z');
+    this.tc.attach(mesh);
+  }
+
+  private reportGizmo(cb: ((id: string, x: number, y: number, z: number) => void) | null) {
+    const m = this.tc.object as THREE.Mesh | undefined;
+    if (!m || !m.userData.gizmoId || !cb) return;
+    if (m.userData.gizmoMode === 'delta') {
+      const base = m.userData.gizmoBase as THREE.Vector3;
+      cb(m.userData.gizmoId, m.position.x - base.x, m.position.y - base.y, m.position.z - base.z);
+    } else {
+      cb(m.userData.gizmoId, m.position.x, m.position.y, m.position.z);
+    }
   }
   private liveGizmo() {
-    const m = this.selectedMesh();
-    if (m && m.userData.gizmoId && this.onGizmoChange) {
-      this.onGizmoChange(m.userData.gizmoId, m.position.x, m.position.y, m.position.z);
-    }
+    this.reportGizmo(this.onGizmoChange);
   }
   private commitGizmo() {
-    const m = this.selectedMesh();
-    if (m && m.userData.gizmoId && this.onGizmoCommit) {
-      this.onGizmoCommit(m.userData.gizmoId, m.position.x, m.position.y, m.position.z);
-    }
+    this.reportGizmo(this.onGizmoCommit);
   }
 
   private ndc(e: PointerEvent): THREE.Vector2 {
@@ -121,26 +157,17 @@ export class Viewer {
     this.raycaster.setFromCamera(this.ndc(e), this.camera);
     const hit =
       this.raycaster.intersectObjects(this.gizmoMeshes, false).length > 0 ||
-      (this.onDrag && this.raycaster.intersectObjects(this.draggable, false).length > 0);
+      (this.onDrag ? this.raycaster.intersectObjects(this.draggable, false).length > 0 : false);
     this.renderer.domElement.style.cursor = hit ? 'grab' : '';
   };
 
   private onPointerDown = (e: PointerEvent) => {
+    // Grabbing a gizmo handle: let TransformControls own it.
+    if ((this.tc as any).axis) return;
+
     this.raycaster.setFromCamera(this.ndc(e), this.camera);
 
-    // Selectable (magnet) parts → attach the gizmo.
-    if (this.gizmoMeshes.length) {
-      const g = this.raycaster.intersectObjects(this.gizmoMeshes, false);
-      if (g.length) {
-        e.stopPropagation();
-        const mesh = g[0].object as THREE.Mesh;
-        this.selectedGizmoId = mesh.userData.gizmoId;
-        this.tc.attach(mesh);
-        return;
-      }
-    }
-
-    // Draggable (interlock) parts → XY drag.
+    // Interlock XY drag: immediate drag-to-move.
     if (this.draggable.length && this.onDrag) {
       const hits = this.raycaster.intersectObjects(this.draggable, false);
       if (hits.length) {
@@ -173,11 +200,19 @@ export class Viewer {
       }
     }
 
-    // Clicking a gizmo handle: let TransformControls handle it, keep selection.
-    if ((this.tc as any).axis) return;
+    // Gizmo parts: select on a click (not a drag), so orbit still works on the body.
+    this.downPos = { x: e.clientX, y: e.clientY };
+    const g = this.gizmoMeshes.length ? this.raycaster.intersectObjects(this.gizmoMeshes, false) : [];
+    this.pendingSelect = g.length ? (g[0].object as THREE.Mesh).userData.gizmoId : null;
+    window.addEventListener('pointerup', this.onUpSelect, { once: true });
+  };
 
-    // Empty space → deselect the gizmo.
-    if (this.selectedGizmoId) {
+  private onUpSelect = (e: PointerEvent) => {
+    const moved = Math.hypot(e.clientX - this.downPos.x, e.clientY - this.downPos.y);
+    if (moved > 5) return; // it was an orbit/drag, not a click
+    if (this.pendingSelect) {
+      this.selectGizmo(this.pendingSelect);
+    } else if (this.selectedGizmoId && !(this.tc as any).axis) {
       this.selectedGizmoId = null;
       this.tc.detach();
     }
@@ -209,37 +244,59 @@ export class Viewer {
 
     const group = new THREE.Group();
     for (const p of parts) {
+      const isPreview = p.preview === true;
+      const deltaGizmo = !!p.gizmo && !p.gizmoPos;
+      // Delta-gizmo parts get a cloned buffer so recentering never mutates the
+      // arrays used for the 3MF export.
+      const posArr = deltaGizmo ? (p.vertProperties.slice() as Float32Array) : p.vertProperties;
+
       const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.BufferAttribute(p.vertProperties, 3));
+      geo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
       geo.setIndex(new THREE.BufferAttribute(p.triVerts, 1));
       geo.computeVertexNormals();
-      const isPreview = p.preview === true;
+
       const mat = new THREE.MeshStandardMaterial({
         color: new THREE.Color(p.colorRgb[0] / 255, p.colorRgb[1] / 255, p.colorRgb[2] / 255),
         roughness: 0.5,
         metalness: 0.0,
         transparent: isPreview,
         opacity: isPreview ? p.opacity ?? 0.7 : 1,
-        // Preview markers draw on top so they stay visible even inside the letter.
         depthTest: !isPreview,
       });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.userData.preview = isPreview;
-      if (isPreview) mesh.renderOrder = 10;
-      if (p.gizmoPos) mesh.position.set(p.gizmoPos[0], p.gizmoPos[1], p.gizmoPos[2]);
+      if (!isPreview) {
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+      } else {
+        mesh.renderOrder = 10;
+      }
+
+      if (p.gizmo) {
+        mesh.userData.gizmoId = p.gizmo;
+        mesh.userData.gizmoAxes = p.gizmoAxes ?? (p.gizmoPos ? 'xyz' : 'xy');
+        if (p.gizmoPos) {
+          mesh.userData.gizmoMode = 'abs';
+          mesh.position.set(p.gizmoPos[0], p.gizmoPos[1], p.gizmoPos[2]);
+        } else {
+          geo.computeBoundingBox();
+          const c = new THREE.Vector3();
+          geo.boundingBox!.getCenter(c);
+          geo.translate(-c.x, -c.y, -c.z); // mutates the cloned array only
+          mesh.position.copy(c);
+          mesh.userData.gizmoMode = 'delta';
+          mesh.userData.gizmoBase = c.clone();
+        }
+        this.gizmoMeshes.push(mesh);
+      }
       if (p.drag) {
         mesh.userData.dragId = p.drag;
         this.draggable.push(mesh);
       }
-      if (p.gizmo) {
-        mesh.userData.gizmoId = p.gizmo;
-        this.gizmoMeshes.push(mesh);
-      }
       group.add(mesh);
     }
 
-    // Position: snap to the 10 mm grid when it's on, else centre. Base the bbox
-    // on the real geometry (markers excluded, positions are 0 for real parts).
+    // World bbox of the real geometry (accounting for any per-mesh position).
     const bb = new THREE.Box3();
     let hasReal = false;
     for (const child of group.children) {
@@ -247,7 +304,9 @@ export class Viewer {
       if (mesh.userData.preview) continue;
       mesh.geometry.computeBoundingBox();
       if (mesh.geometry.boundingBox) {
-        bb.union(mesh.geometry.boundingBox);
+        const gb = mesh.geometry.boundingBox.clone();
+        gb.translate(mesh.position);
+        bb.union(gb);
         hasReal = true;
       }
     }
@@ -255,16 +314,20 @@ export class Viewer {
       for (const child of group.children) {
         const mesh = child as THREE.Mesh;
         mesh.geometry.computeBoundingBox();
-        if (mesh.geometry.boundingBox) bb.union(mesh.geometry.boundingBox);
+        if (mesh.geometry.boundingBox) {
+          const gb = mesh.geometry.boundingBox.clone();
+          gb.translate(mesh.position);
+          bb.union(gb);
+        }
       }
     }
+
     const size = new THREE.Vector3();
     bb.getSize(size);
     const maxd = Math.max(size.x, size.y, size.z) || 60;
     if (recenter) {
       const target = new THREE.Vector3(0, 0, 0);
       if (this.gridEnabled) {
-        // Letter base starts at the grid origin (0,0); drop to the plate.
         this.centerOffset.set(-bb.min.x, -bb.min.y, -bb.min.z);
         target.set(size.x / 2, size.y / 2, size.z / 2);
       } else {
@@ -276,6 +339,7 @@ export class Viewer {
       this.camera.position.set(target.x, target.y - maxd * 1.7, target.z + maxd * 1.3);
       this.controls.target.copy(target);
       this.controls.update();
+      this.key.target.position.copy(target);
     } else {
       group.position.copy(this.centerOffset);
     }
@@ -283,10 +347,9 @@ export class Viewer {
     this.scene.add(group);
     this.group = group;
 
-    // Re-attach the gizmo to the same magnet after a rebuild.
     if (this.selectedGizmoId) {
       const again = this.gizmoMeshes.find((m) => m.userData.gizmoId === this.selectedGizmoId);
-      if (again) this.tc.attach(again);
+      if (again) this.attachTo(again);
       else this.selectedGizmoId = null;
     }
   }

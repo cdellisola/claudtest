@@ -197,12 +197,12 @@ function buildInitial(w: any, msg: Extract<BuildRequest, { tool: 'initial' }>): 
 
   const initialCS0 = union(msg.initialGlyphs);
   if (!initialCS0) throw new Error("Manca l'iniziale.");
-  let initialCS = initialCS0;
+  let initialCS = track(initialCS0.translate([p.initialOffsetX, p.initialOffsetY]));
 
   // Flat base: keep only material above a horizontal cut (for curved letters).
   if (p.flatBase) {
     const bb = glyphsBBox(msg.initialGlyphs);
-    const cutY = bb.minY + Math.max(0, p.flatBaseCut);
+    const cutY = bb.minY + p.initialOffsetY + Math.max(0, p.flatBaseCut);
     const big = 100000;
     const rectRing: Ring = [
       [-big, cutY],
@@ -241,8 +241,12 @@ function buildInitial(w: any, msg: Extract<BuildRequest, { tool: 'initial' }>): 
     );
   for (const m of p.magnets) initial = track(initial.subtract(voidOf(m)));
 
-  const parts: Part[] = [meshToPart(initial, 'iniziale', p.initialColor)];
-  if (namePiece) parts.push(meshToPart(namePiece, 'nome', p.nameColor));
+  const parts: Part[] = [
+    { ...meshToPart(initial, 'iniziale', p.initialColor), gizmo: 'initial', gizmoAxes: 'xy' },
+  ];
+  if (namePiece) {
+    parts.push({ ...meshToPart(namePiece, 'nome', p.nameColor), gizmo: 'name', gizmoAxes: 'xy' });
+  }
 
   // Preview-only magnet markers, authored around the origin and placed via
   // gizmoPos so the 3-axis gizmo yields absolute coordinates.

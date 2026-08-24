@@ -20,6 +20,7 @@ export function createNametagTool(): Tool {
     name: 'Name TAG',
     subtitle: 'Targhetta con nome: base, contorno, testo (multicolore).',
     available: true,
+    usesGrid: true,
 
     mount(body, onChange) {
       root = body;

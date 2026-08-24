@@ -23,6 +23,7 @@ export function createInterlockTool(): Tool {
     name: 'Frasi a incastro',
     subtitle: 'Tre testi che si incastrano (Insult3D). Trascina i testi in anteprima.',
     available: true,
+    usesGrid: true,
 
     mount(body, onChange) {
       root = body;

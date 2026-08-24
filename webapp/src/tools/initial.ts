@@ -98,7 +98,10 @@ export function createInitialTool(): Tool {
           <label class="field"><span>Tolleranza</span><input id="in-clear" type="number" value="0.1" min="0" step="0.05" /></label>
           <label class="field"><span>Offset X nome</span><input id="in-ox" type="number" value="0" step="1" /></label>
           <label class="field"><span>Offset Y nome</span><input id="in-oy" type="number" value="0" step="1" /></label>
+          <label class="field"><span>Offset X iniziale</span><input id="in-iox" type="number" value="0" step="1" /></label>
+          <label class="field"><span>Offset Y iniziale</span><input id="in-ioy" type="number" value="0" step="1" /></label>
         </div>
+        <p class="hint">↔ Clicca l'iniziale o il nome nell'anteprima per spostarli con gli assi X/Y.</p>
 
         <label class="field"><span>Rotazione nome: <b id="in-rotval">0</b>°</span>
           <input id="in-rot" type="range" min="-180" max="180" value="0" step="1" /></label>
@@ -175,6 +178,8 @@ export function createInitialTool(): Tool {
           clearance: num('in-clear'),
           nameOffsetX: num('in-ox'),
           nameOffsetY: num('in-oy'),
+          initialOffsetX: num('in-iox'),
+          initialOffsetY: num('in-ioy'),
           nameRotate: num('in-rot'),
           flatBase: checked('in-flat'),
           flatBaseCut: num('in-flatcut'),
@@ -186,6 +191,7 @@ export function createInitialTool(): Tool {
     },
 
     onGizmoLive(id, x, y, z) {
+      if (!id.startsWith('magnet:')) return; // name/initial commit on drop, not live
       const i = Number(id.split(':')[1]);
       if (!magnets[i]) return;
       const r = (v: number) => Math.round(v * 10) / 10;
@@ -203,7 +209,20 @@ export function createInitialTool(): Tool {
     },
 
     onGizmoMove(id, x, y, z) {
-      this.onGizmoLive?.(id, x, y, z);
+      const r = (v: number) => Math.round(v * 10) / 10;
+      const bump = (fx: string, fy: string, dx: number, dy: number) => {
+        const ex = q<HTMLInputElement>(fx);
+        const ey = q<HTMLInputElement>(fy);
+        ex.value = String(r(parseFloat(ex.value) + dx));
+        ey.value = String(r(parseFloat(ey.value) + dy));
+      };
+      if (id.startsWith('magnet:')) {
+        this.onGizmoLive?.(id, x, y, z);
+      } else if (id === 'name') {
+        bump('in-ox', 'in-oy', x, y); // x,y are the drag delta (mm)
+      } else if (id === 'initial') {
+        bump('in-iox', 'in-ioy', x, y);
+      }
     },
 
     downloadName() {

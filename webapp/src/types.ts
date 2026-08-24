@@ -32,6 +32,8 @@ export interface Part {
   drag?: string;
   /** If set, this part is selectable and moved with a 3-axis gizmo (id passed back). */
   gizmo?: string;
+  /** Which axes the gizmo exposes (default 'xyz'). */
+  gizmoAxes?: 'xyz' | 'xy';
   /** World position for a gizmo part (its geometry is authored around the origin). */
   gizmoPos?: [number, number, number];
   /** Preview-only marker: shown in the viewer, excluded from the 3MF export. */
@@ -57,6 +59,8 @@ export interface InitialParams {
   clearance: number;
   nameOffsetX: number;
   nameOffsetY: number;
+  initialOffsetX: number;
+  initialOffsetY: number;
   nameRotate: number; // degrees
   flatBase: boolean; // cut a flat bottom (for curved letters)
   flatBaseCut: number; // mm from the bottom where the flat cut is made
