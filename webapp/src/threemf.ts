@@ -19,7 +19,9 @@ function hex(c: RGB): string {
   return `#${h(c[0])}${h(c[1])}${h(c[2])}FF`;
 }
 
-export function buildThreeMF(parts: Part[]): Uint8Array {
+export function buildThreeMF(allParts: Part[]): Uint8Array {
+  // Preview-only markers (e.g. magnet placeholders) never go into the file.
+  const parts = allParts.filter((p) => !p.preview);
   // Drop the assembly onto the plate (min Z -> 0).
   let minZ = Infinity;
   for (const p of parts) {

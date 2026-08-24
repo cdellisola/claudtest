@@ -30,6 +30,39 @@ export interface Part {
   triVerts: Uint32Array;
   /** If set, this part can be dragged in the preview (id passed back on drop). */
   drag?: string;
+  /** If set, this part is selectable and moved with a 3-axis gizmo (id passed back). */
+  gizmo?: string;
+  /** World position for a gizmo part (its geometry is authored around the origin). */
+  gizmoPos?: [number, number, number];
+  /** Preview-only marker: shown in the viewer, excluded from the 3MF export. */
+  preview?: boolean;
+  /** Suggested opacity for preview markers (0..1). */
+  opacity?: number;
+}
+
+/** One cylindrical magnet pocket (all mm), position relative to the initial. */
+export interface Magnet {
+  x: number;
+  y: number;
+  z: number; // centre height above the back (z=0) face
+  d: number; // diameter
+  h: number; // height
+}
+
+/** Parameters for the initial-with-name tool (all mm). */
+export interface InitialParams {
+  initialThickness: number;
+  nameThickness: number;
+  pocketDepth: number; // how deep the name sinks into the initial
+  clearance: number;
+  nameOffsetX: number;
+  nameOffsetY: number;
+  nameRotate: number; // degrees
+  flatBase: boolean; // cut a flat bottom (for curved letters)
+  flatBaseCut: number; // mm from the bottom where the flat cut is made
+  initialColor: RGB;
+  nameColor: RGB;
+  magnets: Magnet[];
 }
 
 /** Parameters for the interlocking-text tool (Insult3D style, all mm). */
@@ -67,6 +100,13 @@ export type BuildRequest =
       g2: Ring[][];
       g3: Ring[][];
       params: InterlockParams;
+    }
+  | {
+      type: 'build';
+      tool: 'initial';
+      initialGlyphs: Ring[][];
+      nameGlyphs: Ring[][];
+      params: InitialParams;
     };
 
 export type BuildResponse =

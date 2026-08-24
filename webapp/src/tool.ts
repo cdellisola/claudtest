@@ -13,6 +13,12 @@ export interface Tool {
   downloadName(): string;
   /** A draggable preview part was moved by dx/dy mm — update state accordingly. */
   onDrag?(dragId: string, dxMm: number, dyMm: number): void;
+  /** Show the 10 mm print grid for this tool. */
+  usesGrid?: boolean;
+  /** A gizmo part is being dragged (live absolute mm) — update inputs, no rebuild. */
+  onGizmoLive?(id: string, x: number, y: number, z: number): void;
+  /** A gizmo drag finished (absolute mm) — commit state; the portal rebuilds. */
+  onGizmoMove?(id: string, x: number, y: number, z: number): void;
   /** Optional hook when new geometry arrives. */
   onParts?(parts: Part[]): void;
   /** Tear down (remove font pickers etc.). */

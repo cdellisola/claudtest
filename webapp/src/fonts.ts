@@ -211,3 +211,72 @@ export function textToGlyphs(
 
   return glyphs;
 }
+
+/** The uppercased first letter of a string (accent-aware). */
+export function firstLetterUpper(text: string): string {
+  const t = text.trim();
+  return t ? Array.from(t)[0].toUpperCase() : '';
+}
+
+function glyphBox(g: Ring[]) {
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const ring of g) {
+    for (const [x, y] of ring) {
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  }
+  return { minX, maxX, minY, maxY };
+}
+
+/**
+ * Heuristic: connect floating marks (i/j dots, accents) to the letter body
+ * below them with a thin bridge, so they don't end up as detached pieces.
+ * Returns the glyphs plus any bridge rectangles.
+ */
+export function attachFloatingMarks(glyphs: Ring[][]): Ring[][] {
+  if (glyphs.length < 2) return glyphs;
+  const boxes = glyphs.map(glyphBox);
+  const diag = boxes.map((b) => Math.hypot(b.maxX - b.minX, b.maxY - b.minY));
+  const sorted = [...diag].sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)] || 1;
+
+  const bridges: Ring[][] = [];
+  for (let i = 0; i < glyphs.length; i++) {
+    if (diag[i] > 0.55 * median) continue; // not a small mark
+    const s = boxes[i];
+    let best = -1;
+    let bestGap = Infinity;
+    for (let j = 0; j < glyphs.length; j++) {
+      if (j === i) continue;
+      const b = boxes[j];
+      const overlap = Math.min(s.maxX, b.maxX) - Math.max(s.minX, b.minX);
+      if (overlap <= 0) continue; // must sit above the body horizontally
+      if (b.maxY >= s.minY) continue; // body must be below the mark
+      const gap = s.minY - b.maxY;
+      if (gap < bestGap) {
+        bestGap = gap;
+        best = j;
+      }
+    }
+    if (best < 0 || bestGap <= 0.01) continue; // none, or already touching
+    const b = boxes[best];
+    const ox0 = Math.max(s.minX, b.minX);
+    const ox1 = Math.min(s.maxX, b.maxX);
+    const cx = (ox0 + ox1) / 2;
+    const w = Math.max((ox1 - ox0) * 0.5, (s.maxX - s.minX) * 0.4, 0.5);
+    const y0 = b.maxY - 0.5;
+    const y1 = s.minY + 0.5;
+    bridges.push([
+      [
+        [cx - w / 2, y0],
+        [cx + w / 2, y0],
+        [cx + w / 2, y1],
+        [cx - w / 2, y1],
+      ],
+    ]);
+  }
+  return glyphs.concat(bridges);
+}

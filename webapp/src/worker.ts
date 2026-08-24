@@ -175,12 +175,103 @@ function buildInterlock(w: any, msg: Extract<BuildRequest, { tool: 'interlock' }
   return parts;
 }
 
+// ---------------------------------------------------------------------------
+// Initial with name (GlowLab Letter 3D)
+// ---------------------------------------------------------------------------
+function buildInitial(w: any, msg: Extract<BuildRequest, { tool: 'initial' }>): Part[] {
+  const { CrossSection, Manifold } = w;
+  const p = msg.params;
+  const cleanup: any[] = [];
+  const track = <T,>(o: T): T => {
+    cleanup.push(o);
+    return o;
+  };
+  const union = (glyphs: Ring[][]): any => {
+    let cs: any = null;
+    for (const g of glyphs) {
+      const c = track(new CrossSection(g, 'EvenOdd'));
+      cs = cs ? track(cs.add(c)) : c;
+    }
+    return cs;
+  };
+
+  const initialCS0 = union(msg.initialGlyphs);
+  if (!initialCS0) throw new Error("Manca l'iniziale.");
+  let initialCS = initialCS0;
+
+  // Flat base: keep only material above a horizontal cut (for curved letters).
+  if (p.flatBase) {
+    const bb = glyphsBBox(msg.initialGlyphs);
+    const cutY = bb.minY + Math.max(0, p.flatBaseCut);
+    const big = 100000;
+    const rectRing: Ring = [
+      [-big, cutY],
+      [big, cutY],
+      [big, cutY + big],
+      [-big, cutY + big],
+    ];
+    const rect = track(new CrossSection([rectRing], 'NonZero'));
+    initialCS = track(initialCS.intersect(rect));
+  }
+
+  let initial = track(Manifold.extrude(initialCS, p.initialThickness));
+
+  // Name pocket + protruding piece.
+  const nameCS = msg.nameGlyphs.length ? union(msg.nameGlyphs) : null;
+  let namePiece: any = null;
+  if (nameCS) {
+    const place = (cs: any) =>
+      track(track(cs.rotate(p.nameRotate)).translate([p.nameOffsetX, p.nameOffsetY]));
+    const pocketZ = p.initialThickness - p.pocketDepth;
+    const pocketCS = place(track(nameCS.offset(p.clearance, 'Round', 2, 0)));
+    const pocket = track(track(Manifold.extrude(pocketCS, p.pocketDepth + 0.2)).translate([0, 0, pocketZ - 0.1]));
+    initial = track(initial.subtract(pocket));
+    const pieceCS = place(track(nameCS.offset(-p.clearance, 'Round', 2, 0)));
+    namePiece = track(track(Manifold.extrude(pieceCS, p.nameThickness)).translate([0, 0, pocketZ]));
+  }
+
+  // Magnet pockets: cylindrical voids carved into the initial (at their position).
+  const voidOf = (m: (typeof p.magnets)[number]) =>
+    track(
+      track(
+        Manifold.extrude(track(CrossSection.circle(Math.max(0.5, m.d / 2), 40).translate([m.x, m.y])), Math.max(0.2, m.h)),
+      ).translate([0, 0, m.z - m.h / 2]),
+    );
+  for (const m of p.magnets) initial = track(initial.subtract(voidOf(m)));
+
+  const parts: Part[] = [meshToPart(initial, 'iniziale', p.initialColor)];
+  if (namePiece) parts.push(meshToPart(namePiece, 'nome', p.nameColor));
+
+  // Preview-only magnet markers, authored around the origin and placed via
+  // gizmoPos so the 3-axis gizmo yields absolute coordinates.
+  p.magnets.forEach((m, i) => {
+    const r = Math.max(0.5, m.d / 2);
+    const h = Math.max(0.2, m.h);
+    const marker = track(track(Manifold.extrude(track(CrossSection.circle(r, 40)), h)).translate([0, 0, -h / 2]));
+    parts.push({
+      ...meshToPart(marker, `magnete_${i + 1}`, [120, 120, 135]),
+      gizmo: `magnet:${i}`,
+      gizmoPos: [m.x, m.y, m.z],
+      preview: true,
+      opacity: 0.6,
+    });
+  });
+
+  for (const o of cleanup) o?.delete?.();
+  return parts;
+}
+
 self.onmessage = async (e: MessageEvent<BuildRequest>) => {
   const msg = e.data;
   if (msg.type !== 'build') return;
   try {
     const w = await getWasm();
-    const parts = msg.tool === 'interlock' ? buildInterlock(w, msg) : buildNametag(w, msg);
+    const parts =
+      msg.tool === 'interlock'
+        ? buildInterlock(w, msg)
+        : msg.tool === 'initial'
+          ? buildInitial(w, msg)
+          : buildNametag(w, msg);
     const transfer: Transferable[] = [];
     for (const part of parts) transfer.push(part.vertProperties.buffer, part.triVerts.buffer);
     (self as unknown as Worker).postMessage({ type: 'parts', parts }, transfer);

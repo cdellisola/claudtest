@@ -5,6 +5,7 @@ import { Viewer } from './viewer';
 import { downloadThreeMF } from './threemf';
 import { createNametagTool } from './tools/nametag';
 import { createInterlockTool } from './tools/interlock';
+import { createInitialTool } from './tools/initial';
 import type { Tool } from './tool';
 import type { BuildResponse, Part } from './types';
 
@@ -17,9 +18,9 @@ const statusEl = $('status');
 const downloadBtn = $<HTMLButtonElement>('download');
 const setStatus = (s: string) => (statusEl.textContent = s);
 
-// Tool registry (add the third one here when it's ready).
-const TOOLS: Tool[] = [createNametagTool(), createInterlockTool()];
-const COMING = [{ name: 'Iniziale + Nome & Magpops', subtitle: 'Presto disponibile.' }];
+// Tool registry.
+const TOOLS: Tool[] = [createNametagTool(), createInterlockTool(), createInitialTool()];
+const COMING: { name: string; subtitle: string }[] = [];
 
 let activeTool: Tool | null = null;
 let lastParts: Part[] = [];
@@ -65,6 +66,11 @@ viewer.onDrag = (id, dx, dy) => {
   activeTool?.onDrag?.(id, dx, dy);
   build(false);
 };
+viewer.onGizmoChange = (id, x, y, z) => activeTool?.onGizmoLive?.(id, x, y, z);
+viewer.onGizmoCommit = (id, x, y, z) => {
+  activeTool?.onGizmoMove?.(id, x, y, z);
+  build(false);
+};
 
 // --- Portal navigation ---------------------------------------------------
 function renderHome() {
@@ -75,6 +81,7 @@ function renderHome() {
   downloadBtn.disabled = true;
   lastParts = [];
   setStatus('');
+  viewer.setGrid(false);
   toolArea.innerHTML = `<p class="portal-intro">Scegli una funzione:</p>`;
   const list = document.createElement('div');
   list.className = 'tool-list';
@@ -113,6 +120,7 @@ function activate(tool: Tool) {
   bodyEl.className = 'tool-body';
   toolArea.append(back, title, bodyEl);
 
+  viewer.setGrid(!!tool.usesGrid);
   tool.mount(bodyEl, scheduleBuild);
   build(true);
 }

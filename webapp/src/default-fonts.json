@@ -23,5 +23,22 @@
   { "slug": "oswald",        "name": "Oswald",         "path": "ofl/oswald/Oswald[wght].ttf" },
   { "slug": "barlowcondensed", "name": "Barlow Condensed", "path": "ofl/barlowcondensed/BarlowCondensed-Bold.ttf" },
   { "slug": "fjallaone",     "name": "Fjalla One",     "path": "ofl/fjallaone/FjallaOne-Regular.ttf" },
-  { "slug": "archivonarrow", "name": "Archivo Narrow", "path": "ofl/archivonarrow/ArchivoNarrow[wght].ttf" }
+  { "slug": "archivonarrow", "name": "Archivo Narrow", "path": "ofl/archivonarrow/ArchivoNarrow[wght].ttf" },
+  { "slug": "dancingscript", "name": "Dancing Script", "path": "ofl/dancingscript/DancingScript[wght].ttf" },
+  { "slug": "greatvibes",    "name": "Great Vibes",    "path": "ofl/greatvibes/GreatVibes-Regular.ttf" },
+  { "slug": "allura",        "name": "Allura",         "path": "ofl/allura/Allura-Regular.ttf" },
+  { "slug": "parisienne",    "name": "Parisienne",     "path": "ofl/parisienne/Parisienne-Regular.ttf" },
+  { "slug": "sacramento",    "name": "Sacramento",     "path": "ofl/sacramento/Sacramento-Regular.ttf" },
+  { "slug": "alexbrush",     "name": "Alex Brush",     "path": "ofl/alexbrush/AlexBrush-Regular.ttf" },
+  { "slug": "damion",        "name": "Damion",         "path": "ofl/damion/Damion-Regular.ttf" },
+  { "slug": "norican",       "name": "Norican",        "path": "ofl/norican/Norican-Regular.ttf" },
+  { "slug": "pinyonscript",  "name": "Pinyon Script",  "path": "ofl/pinyonscript/PinyonScript-Regular.ttf" },
+  { "slug": "abrilfatface",  "name": "Abril Fatface",  "path": "ofl/abrilfatface/AbrilFatface-Regular.ttf" },
+  { "slug": "playfairdisplay", "name": "Playfair Display", "path": "ofl/playfairdisplay/PlayfairDisplay[wght].ttf" },
+  { "slug": "cinzel",        "name": "Cinzel",         "path": "ofl/cinzel/Cinzel[wght].ttf" },
+  { "slug": "lora",          "name": "Lora",           "path": "ofl/lora/Lora[wght].ttf" },
+  { "slug": "librebaskerville", "name": "Libre Baskerville", "path": "ofl/librebaskerville/LibreBaskerville-Bold.ttf" },
+  { "slug": "crimsontext",   "name": "Crimson Text",   "path": "ofl/crimsontext/CrimsonText-Bold.ttf" },
+  { "slug": "notoserif",     "name": "Noto Serif",     "path": "ofl/notoserif/NotoSerif[wdth,wght].ttf" },
+  { "slug": "merriweather",  "name": "Merriweather",   "path": "ofl/merriweather/Merriweather[opsz,wdth,wght].ttf" }
 ]
