@@ -49,6 +49,10 @@ export interface InterlockParams {
   color1: RGB;
   color2: RGB;
   color3: RGB;
+  sfondo: boolean; // add a flat backing plate under the whole phrase
+  sfondoSpessore: number; // its thickness, mm
+  sfondoMargine: number; // how far it extends past the phrase, mm
+  sfondoColor: RGB;
 }
 
 // glyphs: one entry per glyph, each a group of rings (outer contour + holes).

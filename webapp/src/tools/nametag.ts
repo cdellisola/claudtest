@@ -29,6 +29,7 @@ export function createNametagTool(): Tool {
         <div class="field"><span>Font</span><div id="nt-font"></div></div>
         <div class="grid">
           <label class="field"><span>Dim. testo (mm)</span><input id="nt-fontSize" type="number" value="20" min="4" step="1" /></label>
+          <label class="field"><span>Spaziatura lettere</span><input id="nt-spacing" type="number" value="1" min="0.5" max="2" step="0.05" /></label>
           <label class="field"><span>Alt. testo (mm)</span><input id="nt-textHeight" type="number" value="2" min="0.2" step="0.1" /></label>
           <label class="field"><span>Alt. base (mm)</span><input id="nt-plateHeight" type="number" value="3" min="0.4" step="0.1" /></label>
           <label class="field"><span>Bordo base (mm)</span><input id="nt-borderSize" type="number" value="3" min="0.5" step="0.1" /></label>
@@ -61,7 +62,7 @@ export function createNametagTool(): Tool {
     buildRequest(): BuildRequest | null {
       const font = fonts.find((f) => f.id === picker.getSelectedId()) ?? fonts[0];
       const size = num('nt-fontSize');
-      const glyphs = textToGlyphs(q<HTMLTextAreaElement>('nt-text').value, font.font, size);
+      const glyphs = textToGlyphs(q<HTMLTextAreaElement>('nt-text').value, font.font, size, num('nt-spacing'));
       if (!glyphs.length) return null;
       return {
         type: 'build',

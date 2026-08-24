@@ -122,8 +122,17 @@ export async function removeUserFont(option: FontOption): Promise<void> {
  * group of rings (outer contour + holes). Centred on the origin, in mm, Y up.
  * Keeping glyphs separate lets the worker union them, so overlapping cursive
  * letters fuse instead of cancelling out.
+ *
+ * `spacing` scales the horizontal pen position of each glyph (1 = normal,
+ * <1 tighter/condensed, >1 looser) without stretching the letter shapes.
  */
-export function textToGlyphs(text: string, font: Font, sizeMm: number, lineSpacing = 1.35): Ring[][] {
+export function textToGlyphs(
+  text: string,
+  font: Font,
+  sizeMm: number,
+  spacing = 1,
+  lineSpacing = 1.35,
+): Ring[][] {
   const lines = text.split('\n');
   const glyphs: Ring[][] = [];
   const lineHeight = sizeMm * lineSpacing;
@@ -134,35 +143,39 @@ export function textToGlyphs(text: string, font: Font, sizeMm: number, lineSpaci
     if (value) {
       const shapes = font.generateShapes(value, sizeMm);
       const lineGlyphs: Ring[][] = [];
-      let lminX = Infinity;
-      let lmaxX = -Infinity;
 
       for (const shape of shapes) {
         const pts = shape.extractPoints(12);
         const glyph: Ring[] = [];
-        if (pts.shape.length >= 3) {
-          const ring: Ring = [];
-          for (const p of pts.shape) {
-            ring.push([p.x, p.y]);
-            if (p.x < lminX) lminX = p.x;
-            if (p.x > lmaxX) lmaxX = p.x;
-          }
-          glyph.push(ring);
-        }
+        if (pts.shape.length >= 3) glyph.push(pts.shape.map((p) => [p.x, p.y] as [number, number]));
         for (const hole of pts.holes) {
-          if (hole.length >= 3) {
-            const ring: Ring = [];
-            for (const p of hole) {
-              ring.push([p.x, p.y]);
-              if (p.x < lminX) lminX = p.x;
-              if (p.x > lmaxX) lmaxX = p.x;
-            }
-            glyph.push(ring);
-          }
+          if (hole.length >= 3) glyph.push(hole.map((p) => [p.x, p.y] as [number, number]));
         }
         if (glyph.length) lineGlyphs.push(glyph);
       }
 
+      // Apply letter spacing: shift each glyph so its pen position scales by
+      // `spacing`, keeping the glyph shape itself unchanged.
+      if (spacing !== 1) {
+        for (const glyph of lineGlyphs) {
+          let gMinX = Infinity;
+          for (const ring of glyph) for (const pt of ring) if (pt[0] < gMinX) gMinX = pt[0];
+          const shift = gMinX * (spacing - 1);
+          for (const ring of glyph) for (const pt of ring) pt[0] += shift;
+        }
+      }
+
+      // Centre this line horizontally.
+      let lminX = Infinity;
+      let lmaxX = -Infinity;
+      for (const glyph of lineGlyphs) {
+        for (const ring of glyph) {
+          for (const pt of ring) {
+            if (pt[0] < lminX) lminX = pt[0];
+            if (pt[0] > lmaxX) lmaxX = pt[0];
+          }
+        }
+      }
       const offX = isFinite(lminX) ? -((lminX + lmaxX) / 2) : 0;
       for (const glyph of lineGlyphs) {
         for (const ring of glyph) {

@@ -151,6 +151,18 @@ function buildInterlock(w: any, msg: Extract<BuildRequest, { tool: 'interlock' }
 
   const parts: Part[] = [meshToPart(base, 'testo_centrale', p.color2)];
 
+  // Optional flat backing plate (just the background, no raised border) under
+  // the whole phrase.
+  if (p.sfondo) {
+    let sil: any = t2;
+    if (t1) sil = track(sil.add(track(t1.translate([p.posX1, p.posY1]))));
+    if (t3) sil = track(sil.add(track(t3.translate([p.posX3, p.posY3]))));
+    const plateCS = track(sil.offset(p.sfondoMargine, 'Round', 2, 0));
+    const th = Math.max(0.2, p.sfondoSpessore);
+    const plate = track(track(Manifold.extrude(plateCS, th)).translate([0, 0, -th + 0.02]));
+    parts.unshift(meshToPart(plate, 'sfondo', p.sfondoColor));
+  }
+
   const solid = (t: any, px: number, py: number, sp: number): any => {
     const moved = track(t.translate([px, py]));
     const sol = track(Manifold.extrude(moved, sp));

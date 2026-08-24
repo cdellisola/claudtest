@@ -13,9 +13,9 @@ export function createInterlockTool(): Tool {
   let p1: FontPicker, p2: FontPicker, p3: FontPicker;
   const q = <T extends HTMLElement = HTMLElement>(id: string) => root.querySelector<T>('#' + id)!;
   const num = (id: string) => parseFloat(q<HTMLInputElement>(id).value);
-  const glyphsFor = (textId: string, picker: FontPicker, size: number) => {
+  const glyphsFor = (textId: string, picker: FontPicker, size: number, spacing: number) => {
     const font = fonts.find((f) => f.id === picker.getSelectedId()) ?? fonts[0];
-    return textToGlyphs(q<HTMLTextAreaElement>(textId).value, font.font, size);
+    return textToGlyphs(q<HTMLTextAreaElement>(textId).value, font.font, size, spacing);
   };
 
   return {
@@ -42,11 +42,23 @@ export function createInterlockTool(): Tool {
           <label class="field"><span>Dim. testo 1</span><input id="il-s1" type="number" value="17" min="6" step="0.5" /></label>
           <label class="field"><span>Dim. testo 2</span><input id="il-s2" type="number" value="60" min="20" step="0.5" /></label>
           <label class="field"><span>Dim. testo 3</span><input id="il-s3" type="number" value="17" min="6" step="0.5" /></label>
+          <label class="field"><span>Spaziatura 1</span><input id="il-sc1" type="number" value="1.1" min="0.5" max="2" step="0.05" /></label>
+          <label class="field"><span>Spaziatura 2</span><input id="il-sc2" type="number" value="0.8" min="0.5" max="2" step="0.05" /></label>
+          <label class="field"><span>Spaziatura 3</span><input id="il-sc3" type="number" value="1.1" min="0.5" max="2" step="0.05" /></label>
           <label class="field"><span>Spessore centrale</span><input id="il-sp2" type="number" value="22" min="2" step="0.5" /></label>
           <label class="field"><span>Spessore testo 1</span><input id="il-sp1" type="number" value="5" min="1" step="0.5" /></label>
           <label class="field"><span>Spessore testo 3</span><input id="il-sp3" type="number" value="5" min="1" step="0.5" /></label>
           <label class="field"><span>Profondità incastro</span><input id="il-prof" type="number" value="3" min="0.5" step="0.5" /></label>
           <label class="field"><span>Tolleranza</span><input id="il-toll" type="number" value="0.2" min="0" step="0.05" /></label>
+        </div>
+
+        <div class="toggles">
+          <label><input id="il-bg" type="checkbox" /> Sfondo (piano di fondo)</label>
+        </div>
+        <div class="grid">
+          <label class="field"><span>Spessore sfondo</span><input id="il-bgsp" type="number" value="3" min="0.4" step="0.2" /></label>
+          <label class="field"><span>Margine sfondo</span><input id="il-bgm" type="number" value="3" min="0" step="0.5" /></label>
+          <label class="field"><span>Colore sfondo</span><input id="il-bgc" type="color" value="#222222" /></label>
         </div>
 
         <div class="grid">
@@ -76,14 +88,14 @@ export function createInterlockTool(): Tool {
     },
 
     buildRequest(): BuildRequest | null {
-      const g2 = glyphsFor('il-t2', p2, num('il-s2'));
+      const g2 = glyphsFor('il-t2', p2, num('il-s2'), num('il-sc2'));
       if (!g2.length) return null; // central text is required
       return {
         type: 'build',
         tool: 'interlock',
-        g1: glyphsFor('il-t1', p1, num('il-s1')),
+        g1: glyphsFor('il-t1', p1, num('il-s1'), num('il-sc1')),
         g2,
-        g3: glyphsFor('il-t3', p3, num('il-s3')),
+        g3: glyphsFor('il-t3', p3, num('il-s3'), num('il-sc3')),
         params: {
           spessore2: num('il-sp2'),
           spessore1: num('il-sp1'),
@@ -100,6 +112,10 @@ export function createInterlockTool(): Tool {
           color1: hexToRgb(q<HTMLInputElement>('il-c1').value),
           color2: hexToRgb(q<HTMLInputElement>('il-c2').value),
           color3: hexToRgb(q<HTMLInputElement>('il-c3').value),
+          sfondo: q<HTMLInputElement>('il-bg').checked,
+          sfondoSpessore: num('il-bgsp'),
+          sfondoMargine: num('il-bgm'),
+          sfondoColor: hexToRgb(q<HTMLInputElement>('il-bgc').value),
         },
       };
     },

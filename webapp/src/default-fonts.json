@@ -17,5 +17,11 @@
   { "slug": "righteous",     "name": "Righteous",      "path": "ofl/righteous/Righteous-Regular.ttf" },
   { "slug": "sigmarone",     "name": "Sigmar One",     "path": "ofl/sigmarone/SigmarOne-Regular.ttf" },
   { "slug": "titanone",      "name": "Titan One",      "path": "ofl/titanone/TitanOne-Regular.ttf" },
-  { "slug": "comfortaa",     "name": "Comfortaa",      "path": "ofl/comfortaa/Comfortaa[wght].ttf" }
+  { "slug": "comfortaa",     "name": "Comfortaa",      "path": "ofl/comfortaa/Comfortaa[wght].ttf" },
+  { "slug": "anton",         "name": "Anton",          "path": "ofl/anton/Anton-Regular.ttf" },
+  { "slug": "bebasneue",     "name": "Bebas Neue",     "path": "ofl/bebasneue/BebasNeue-Regular.ttf" },
+  { "slug": "oswald",        "name": "Oswald",         "path": "ofl/oswald/Oswald[wght].ttf" },
+  { "slug": "barlowcondensed", "name": "Barlow Condensed", "path": "ofl/barlowcondensed/BarlowCondensed-Bold.ttf" },
+  { "slug": "fjallaone",     "name": "Fjalla One",     "path": "ofl/fjallaone/FjallaOne-Regular.ttf" },
+  { "slug": "archivonarrow", "name": "Archivo Narrow", "path": "ofl/archivonarrow/ArchivoNarrow[wght].ttf" }
 ]
