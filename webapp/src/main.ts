@@ -6,6 +6,7 @@ import { downloadThreeMF } from './threemf';
 import { createNametagTool } from './tools/nametag';
 import { createInterlockTool } from './tools/interlock';
 import { createInitialTool } from './tools/initial';
+import { createCookieTool } from './tools/cookie';
 import type { Tool } from './tool';
 import type { BuildResponse, Part } from './types';
 
@@ -19,7 +20,12 @@ const downloadBtn = $<HTMLButtonElement>('download');
 const setStatus = (s: string) => (statusEl.textContent = s);
 
 // Tool registry.
-const TOOLS: Tool[] = [createNametagTool(), createInterlockTool(), createInitialTool()];
+const TOOLS: Tool[] = [
+  createNametagTool(),
+  createInterlockTool(),
+  createInitialTool(),
+  createCookieTool(),
+];
 const COMING: { name: string; subtitle: string }[] = [];
 
 let activeTool: Tool | null = null;

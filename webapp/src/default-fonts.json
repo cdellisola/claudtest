@@ -40,5 +40,6 @@
   { "slug": "librebaskerville", "name": "Libre Baskerville", "path": "ofl/librebaskerville/LibreBaskerville-Bold.ttf" },
   { "slug": "crimsontext",   "name": "Crimson Text",   "path": "ofl/crimsontext/CrimsonText-Bold.ttf" },
   { "slug": "notoserif",     "name": "Noto Serif",     "path": "ofl/notoserif/NotoSerif[wdth,wght].ttf" },
-  { "slug": "merriweather",  "name": "Merriweather",   "path": "ofl/merriweather/Merriweather[opsz,wdth,wght].ttf" }
+  { "slug": "merriweather",  "name": "Merriweather",   "path": "ofl/merriweather/Merriweather[opsz,wdth,wght].ttf" },
+  { "slug": "notoemoji",     "name": "Noto Emoji",     "path": "ofl/notoemoji/NotoEmoji[wght].ttf", "hidden": true }
 ]

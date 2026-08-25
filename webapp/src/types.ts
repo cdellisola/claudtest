@@ -92,6 +92,26 @@ export interface InterlockParams {
   sfondoColor: RGB;
 }
 
+/** Parameters for the cookie-cutter tool (all mm). */
+export interface CookieParams {
+  wall: number; // housing wall thickness
+  housingHeight: number;
+  patternHeight: number;
+  iconThickness: number; // engraved/relief depth of the graphic
+  clearance: number; // mating clearance (separated molds)
+  unified: boolean; // one piece instead of two
+  engraved: boolean; // engrave (true) vs raised relief (false)
+  pin: boolean; // add an alignment pin + socket
+  pinD: number;
+  pinH: number;
+  holeD: number;
+  holeH: number;
+  pinX: number;
+  pinY: number;
+  housingColor: RGB;
+  patternColor: RGB;
+}
+
 // glyphs: one entry per glyph, each a group of rings (outer contour + holes).
 // Keeping glyphs grouped lets the worker union them so overlapping cursive
 // letters fuse instead of cancelling out.
@@ -111,6 +131,12 @@ export type BuildRequest =
       initialGlyphs: Ring[][];
       nameGlyphs: Ring[][];
       params: InitialParams;
+    }
+  | {
+      type: 'build';
+      tool: 'cookie';
+      graphic: Ring[][]; // resized graphic silhouette (glyphs), centred, mm
+      params: CookieParams;
     };
 
 export type BuildResponse =

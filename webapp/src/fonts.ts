@@ -65,8 +65,9 @@ function addTtf(
 /** Fetch the bundled Google Fonts. Calls onLoaded after each one appears. */
 export async function loadDefaultFonts(onLoaded?: () => void): Promise<void> {
   const base = import.meta.env.BASE_URL || '/';
-  const list = defaultFonts as { slug: string; name: string }[];
+  const list = defaultFonts as { slug: string; name: string; hidden?: boolean }[];
   for (const f of list) {
+    if (f.hidden) continue; // e.g. the emoji font is loaded on demand, not in the picker
     try {
       const res = await fetch(`${base}fonts/${f.slug}.ttf`);
       if (!res.ok) continue;
@@ -76,6 +77,26 @@ export async function loadDefaultFonts(onLoaded?: () => void): Promise<void> {
       /* skip missing font */
     }
   }
+}
+
+// Emoji font (Noto Emoji), loaded on demand for the cookie-cutter icons.
+let emojiFontPromise: Promise<Font | null> | null = null;
+export function getEmojiFont(): Promise<Font | null> {
+  if (!emojiFontPromise) {
+    emojiFontPromise = (async () => {
+      try {
+        const base = import.meta.env.BASE_URL || '/';
+        const res = await fetch(`${base}fonts/notoemoji.ttf`);
+        if (!res.ok) return null;
+        const json = ttfLoader.parse(await res.arrayBuffer());
+        return fontLoader.parse(json);
+      } catch (e) {
+        console.warn('Font emoji non caricato', e);
+        return null;
+      }
+    })();
+  }
+  return emojiFontPromise;
 }
 
 /** Restore user fonts from IndexedDB. */

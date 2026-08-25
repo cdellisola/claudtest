@@ -267,6 +267,85 @@ function buildInitial(w: any, msg: Extract<BuildRequest, { tool: 'initial' }>): 
   return parts;
 }
 
+// ---------------------------------------------------------------------------
+// Cookie cutter (housing mold + pattern mold)
+// ---------------------------------------------------------------------------
+function buildCookie(w: any, msg: Extract<BuildRequest, { tool: 'cookie' }>): Part[] {
+  const { CrossSection, Manifold } = w;
+  const p = msg.params;
+  const cleanup: any[] = [];
+  const track = <T,>(o: T): T => {
+    cleanup.push(o);
+    return o;
+  };
+
+  if (!msg.graphic.length) throw new Error('Nessuna grafica.');
+
+  // Filled silhouette (holes filled) and the detailed graphic (holes kept).
+  const allRings = msg.graphic.flat();
+  let fill: any = null;
+  for (const r of allRings) {
+    const c = track(new CrossSection([r], 'NonZero'));
+    fill = fill ? track(fill.add(c)) : c;
+  }
+  let detail: any = null;
+  for (const g of msg.graphic) {
+    const c = track(new CrossSection(g, 'EvenOdd'));
+    detail = detail ? track(detail.add(c)) : c;
+  }
+  const bb = glyphsBBox(msg.graphic);
+  const halfW = (bb.maxX - bb.minX) / 2;
+
+  const gap = p.unified ? 0 : p.clearance;
+
+  // Housing mold: a wall following the silhouette.
+  const inner = track(fill.offset(gap, 'Round', 2, 0));
+  const outer = track(fill.offset(gap + p.wall, 'Round', 2, 0));
+  const wallCS = track(outer.subtract(inner));
+  let housing = track(Manifold.extrude(wallCS, p.housingHeight));
+
+  // Pattern mold: solid silhouette with the graphic engraved (or raised).
+  let pattern = track(Manifold.extrude(fill, p.patternHeight));
+  if (p.engraved) {
+    const eng = track(
+      track(Manifold.extrude(detail, p.iconThickness + 0.1)).translate([0, 0, p.patternHeight - p.iconThickness]),
+    );
+    pattern = track(pattern.subtract(eng));
+  } else {
+    const relief = track(track(Manifold.extrude(detail, p.iconThickness)).translate([0, 0, p.patternHeight]));
+    pattern = track(pattern.add(relief));
+  }
+
+  // Optional alignment pin (on the pattern) + socket hole.
+  if (p.pin) {
+    const pinSolid = track(
+      track(Manifold.extrude(track(CrossSection.circle(Math.max(0.5, p.pinD / 2), 48).translate([p.pinX, p.pinY])), Math.max(0.2, p.pinH))).translate(
+        [0, 0, p.patternHeight],
+      ),
+    );
+    pattern = track(pattern.add(pinSolid));
+    const hole = track(
+      track(Manifold.extrude(track(CrossSection.circle(Math.max(0.5, p.holeD / 2), 48).translate([p.pinX, p.pinY])), Math.max(0.2, p.holeH) + 0.1)).translate(
+        [0, 0, -0.05],
+      ),
+    );
+    pattern = track(pattern.subtract(hole));
+  }
+
+  // Lay the two molds side by side (unless unified).
+  if (!p.unified) {
+    housing = track(housing.translate([-(halfW + p.wall + 15), 0, 0]));
+    pattern = track(pattern.translate([halfW + 15, 0, 0]));
+  }
+
+  const parts: Part[] = [
+    meshToPart(housing, 'stampo_esterno', p.housingColor),
+    meshToPart(pattern, 'stampo_pattern', p.patternColor),
+  ];
+  for (const o of cleanup) o?.delete?.();
+  return parts;
+}
+
 self.onmessage = async (e: MessageEvent<BuildRequest>) => {
   const msg = e.data;
   if (msg.type !== 'build') return;
@@ -277,7 +356,9 @@ self.onmessage = async (e: MessageEvent<BuildRequest>) => {
         ? buildInterlock(w, msg)
         : msg.tool === 'initial'
           ? buildInitial(w, msg)
-          : buildNametag(w, msg);
+          : msg.tool === 'cookie'
+            ? buildCookie(w, msg)
+            : buildNametag(w, msg);
     const transfer: Transferable[] = [];
     for (const part of parts) transfer.push(part.vertProperties.buffer, part.triVerts.buffer);
     (self as unknown as Worker).postMessage({ type: 'parts', parts }, transfer);
