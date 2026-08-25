@@ -251,6 +251,7 @@ button#download:disabled {
   display: block;
   width: 100%;
   height: 100%;
+  touch-action: none; /* let OrbitControls/gizmo own touch gestures */
 }
 
 .font-item.font-upload {
@@ -269,8 +270,48 @@ button#download:disabled {
 
 input[type="range"] { width: 100%; accent-color: var(--accent); }
 
-@media (max-width: 720px) {
-  .app { flex-direction: column; }
-  .sidebar { width: 100%; flex: 0 0 auto; max-height: 45vh; }
-  .preview-wrap { height: 55vh; }
+@media (max-width: 860px) {
+  html, body { overflow-x: hidden; }
+  .app { flex-direction: column; height: auto; min-height: 100vh; }
+
+  /* Preview on top, controls scroll below. */
+  .preview-wrap {
+    order: 1;
+    height: 46vh;
+    min-height: 280px;
+    flex: 0 0 auto;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+  .sidebar {
+    order: 2;
+    width: 100%;
+    flex: 1 1 auto;
+    max-height: none;
+    border-right: none;
+    border-top: 1px solid var(--line);
+  }
+  .tool-area { overflow-y: visible; }
+
+  /* Bigger touch targets; 16px inputs stop iOS from zooming on focus. */
+  textarea, select,
+  input[type="number"], input[type="text"], input[type="file"] {
+    font-size: 16px;
+    padding: 11px 12px;
+  }
+  .dropdown-trigger { font-size: 16px; padding: 12px; }
+  .font-item { padding: 13px 12px; }
+  .font-item .label { font-size: 22px; }
+  .colors input[type="color"] { height: 40px; }
+  input[type="range"] { height: 28px; }
+  button#download { padding: 15px; font-size: 16px; }
+  .tool-card { padding: 16px; }
+  .mag-row { flex-wrap: wrap; }
+  .mag-row label { flex: 1 1 30%; }
+}
+
+@media (max-width: 480px) {
+  .grid { grid-template-columns: 1fr; }
+  .colors { grid-template-columns: 1fr 1fr; }
 }

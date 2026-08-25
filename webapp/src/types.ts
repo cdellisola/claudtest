@@ -116,10 +116,12 @@ export interface CookieParams {
 export interface TextCutterParams {
   wall: number; // cutting wall thickness
   cutterHeight: number; // height of the cutting wall
-  frameMargin: number; // gap between the letters and the outer support frame
-  supportHeight: number; // height of the base support (frame + grid)
-  supportSpacing: number; // grid spacing of the support bars
-  supportGrid: boolean; // add the internal support grid (holds counters/islands)
+  borderExt: number; // outer border/flange width (follows the letters)
+  borderHeight: number; // outer border height
+  supportGrid: boolean; // add support bars inside the counters (holds islands)
+  gridWidth: number; // support bar width (wider = stronger)
+  gridHeight: number; // support bar height (shallower = less deep)
+  gridSpacing: number; // spacing between support bars
   color: RGB;
 }
 

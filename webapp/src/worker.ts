@@ -368,40 +368,55 @@ function buildTextCutter(w: any, msg: Extract<BuildRequest, { tool: 'textcutter'
 
   const wall = Math.max(0.4, p.wall);
 
-  // True glyph shape (keeps counters like O/a/A) → cutting walls along every
-  // contour, inner ones included.
+  // True glyph shape (keeps counters like O/a/A) and its filled footprint.
   let shape: any = null;
   for (const g of msg.graphic) {
     const c = track(new CrossSection(g, 'EvenOdd'));
     shape = shape ? track(shape.add(c)) : c;
   }
+  let fill: any = null;
+  for (const r of msg.graphic.flat()) {
+    const c = track(new CrossSection([r], 'NonZero'));
+    fill = fill ? track(fill.add(c)) : c;
+  }
+
+  // Cutting walls along every contour (outer + inner counters).
   const wallBand = track(shape.subtract(track(shape.offset(-wall, 'Round', 2, 0))));
   let solid = track(Manifold.extrude(wallBand, p.cutterHeight));
 
-  // Base support: an outer frame + optional internal grid that ties all the
-  // letters and the floating inner islands (counters) into one piece.
-  if (p.supportHeight > 0) {
+  // Outer border / flange following the letters (as before).
+  if (p.borderExt > 0 && p.borderHeight > 0) {
+    const flange = track(track(fill.offset(p.borderExt, 'Round', 2, 0)).subtract(track(fill.offset(-wall, 'Round', 2, 0))));
+    solid = track(solid.add(track(Manifold.extrude(flange, p.borderHeight))));
+  }
+
+  // Support bars ONLY inside the counters (the empty inner regions), wider and
+  // shallower — they never run through the cutting walls or outside.
+  if (p.supportGrid && p.gridHeight > 0) {
     const bb = glyphsBBox(msg.graphic);
     const cx = (bb.minX + bb.maxX) / 2;
     const cy = (bb.minY + bb.maxY) / 2;
-    const m = Math.max(0, p.frameMargin) + wall;
-    const W = bb.maxX - bb.minX + 2 * m;
-    const H = bb.maxY - bb.minY + 2 * m;
+    const W = bb.maxX - bb.minX + 4;
+    const H = bb.maxY - bb.minY + 4;
+    const bw = Math.max(0.6, p.gridWidth);
+    const spacing = Math.max(3, p.gridSpacing);
 
-    const outer = track(CrossSection.square([W, H], true).translate([cx, cy]));
-    const inner = track(CrossSection.square([W - 2 * wall, H - 2 * wall], true).translate([cx, cy]));
-    let support2D: any = track(outer.subtract(inner));
-
-    if (p.supportGrid) {
-      const spacing = Math.max(3, p.supportSpacing);
-      for (let x = cx - W / 2 + spacing; x < cx + W / 2; x += spacing) {
-        support2D = track(support2D.add(track(CrossSection.square([wall, H], true).translate([x, cy]))));
-      }
-      for (let y = cy - H / 2 + spacing; y < cy + H / 2; y += spacing) {
-        support2D = track(support2D.add(track(CrossSection.square([W, wall], true).translate([cx, y]))));
-      }
+    let grid: any = null;
+    for (let x = cx - W / 2 + spacing; x < cx + W / 2; x += spacing) {
+      const b = track(CrossSection.square([bw, H], true).translate([x, cy]));
+      grid = grid ? track(grid.add(b)) : b;
     }
-    solid = track(solid.add(track(Manifold.extrude(support2D, p.supportHeight))));
+    for (let y = cy - H / 2 + spacing; y < cy + H / 2; y += spacing) {
+      const b = track(CrossSection.square([W, bw], true).translate([cx, y]));
+      grid = grid ? track(grid.add(b)) : b;
+    }
+    if (grid) {
+      // Keep the grid only in the counters (footprint minus the letters),
+      // slightly overlapping the walls so the islands are attached.
+      const counters = track(fill.subtract(track(shape.offset(-0.6, 'Round', 2, 0))));
+      const inside = track(grid.intersect(counters));
+      solid = track(solid.add(track(Manifold.extrude(inside, p.gridHeight))));
+    }
   }
 
   const parts: Part[] = [meshToPart(solid, 'taglierina', p.color)];
