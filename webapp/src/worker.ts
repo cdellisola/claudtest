@@ -411,10 +411,10 @@ function buildTextCutter(w: any, msg: Extract<BuildRequest, { tool: 'textcutter'
       grid = grid ? track(grid.add(b)) : b;
     }
     if (grid) {
-      // Keep the grid only in the counters (footprint minus the letters),
-      // slightly overlapping the walls so the islands are attached.
-      const counters = track(fill.subtract(track(shape.offset(-0.6, 'Round', 2, 0))));
-      const inside = track(grid.intersect(counters));
+      // Keep the bars within the letters' footprint (excludes the flange) so
+      // they cross the interior and tie inner islands (O/a/A centres) to the
+      // outer wall, while staying low (they never reach the cutting edge).
+      const inside = track(grid.intersect(fill));
       solid = track(solid.add(track(Manifold.extrude(inside, p.gridHeight))));
     }
   }
