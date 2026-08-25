@@ -112,6 +112,15 @@ export interface CookieParams {
   patternColor: RGB;
 }
 
+/** Parameters for the text cookie-cutter tool (word-shaped cutter, all mm). */
+export interface TextCutterParams {
+  wall: number; // cutting wall thickness
+  cutterHeight: number; // height of the cutting wall
+  flangeExt: number; // how far the base handle flange extends outward
+  flangeHeight: number; // height of the base flange
+  color: RGB;
+}
+
 // glyphs: one entry per glyph, each a group of rings (outer contour + holes).
 // Keeping glyphs grouped lets the worker union them so overlapping cursive
 // letters fuse instead of cancelling out.
@@ -136,7 +145,14 @@ export type BuildRequest =
       type: 'build';
       tool: 'cookie';
       graphic: Ring[][]; // resized graphic silhouette (glyphs), centred, mm
+      text: Ring[][]; // optional mirrored text to engrave on the pattern, mm
       params: CookieParams;
+    }
+  | {
+      type: 'build';
+      tool: 'textcutter';
+      graphic: Ring[][]; // text glyphs at their mm size, centred
+      params: TextCutterParams;
     };
 
 export type BuildResponse =

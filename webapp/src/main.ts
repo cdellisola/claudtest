@@ -7,6 +7,7 @@ import { createNametagTool } from './tools/nametag';
 import { createInterlockTool } from './tools/interlock';
 import { createInitialTool } from './tools/initial';
 import { createCookieTool } from './tools/cookie';
+import { createTextCutterTool } from './tools/textcutter';
 import type { Tool } from './tool';
 import type { BuildResponse, Part } from './types';
 
@@ -25,6 +26,7 @@ const TOOLS: Tool[] = [
   createInterlockTool(),
   createInitialTool(),
   createCookieTool(),
+  createTextCutterTool(),
 ];
 const COMING: { name: string; subtitle: string }[] = [];
 

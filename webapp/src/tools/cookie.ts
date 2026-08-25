@@ -1,4 +1,5 @@
-import { textToGlyphs, getEmojiFont } from '../fonts';
+import { fonts, textToGlyphs, getEmojiFont } from '../fonts';
+import { createFontPicker, type FontPicker } from '../fontPicker';
 import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader.js';
 import type { Font } from 'three/examples/jsm/loaders/FontLoader.js';
 import type { Tool } from '../tool';
@@ -90,6 +91,7 @@ export function createCookieTool(): Tool {
   let emojiFont: Font | null = null;
   let emojiReady = false;
   let svgGlyphs: Ring[][] | null = null;
+  let textPicker: FontPicker;
   const q = <T extends HTMLElement = HTMLElement>(id: string) => root.querySelector<T>('#' + id)!;
   const num = (id: string) => parseFloat(q<HTMLInputElement>(id).value);
   const checked = (id: string) => q<HTMLInputElement>(id).checked;
@@ -163,6 +165,13 @@ export function createCookieTool(): Tool {
           <label class="field"><span>Perno Y</span><input id="ck-py" type="number" value="0" step="1" /></label>
         </div>
 
+        <label class="field"><span>Testo su pattern (inciso, auto-specchiato)</span><input id="ck-text" type="text" value="" /></label>
+        <div class="field"><span>Font testo</span><div id="ck-tfont"></div></div>
+        <div class="grid">
+          <label class="field"><span>Dim. testo</span><input id="ck-tsize" type="number" value="12" min="4" step="1" /></label>
+          <label class="field"><span>Testo Y</span><input id="ck-ty" type="number" value="0" step="1" /></label>
+        </div>
+
         <div class="colors">
           <label class="field"><span>Stampo esterno</span><input id="ck-col1" type="color" value="#9aa0a8" /></label>
           <label class="field"><span>Pattern</span><input id="ck-col2" type="color" value="#d8a24a" /></label>
@@ -179,6 +188,9 @@ export function createCookieTool(): Tool {
           svgGlyphs = null;
         }
       });
+
+      textPicker = createFontPicker({ preferName: 'Anton', onChange });
+      q('ck-tfont').appendChild(textPicker.el);
 
       body.querySelectorAll('input, textarea, select').forEach((el) => {
         el.addEventListener('input', onChange);
@@ -202,10 +214,24 @@ export function createCookieTool(): Tool {
       }
       const graphic = resizeGlyphs(g, num('ck-w'), num('ck-h'));
       if (!graphic.length) return null;
+
+      // Optional text on the pattern, mirrored horizontally so it engraves
+      // the right way round on the cookie.
+      let text: Ring[][] = [];
+      const ts = q<HTMLInputElement>('ck-text').value.trim();
+      if (ts) {
+        const font = fonts.find((f) => f.id === textPicker.getSelectedId()) ?? fonts[0];
+        const ty = num('ck-ty');
+        text = textToGlyphs(ts, font.font, num('ck-tsize'), 1).map((gl) =>
+          gl.map((r) => r.map((pt) => [-pt[0], pt[1] + ty] as [number, number])),
+        );
+      }
+
       return {
         type: 'build',
         tool: 'cookie',
         graphic,
+        text,
         params: {
           wall: num('ck-wall'),
           housingHeight: num('ck-hh'),
@@ -229,6 +255,10 @@ export function createCookieTool(): Tool {
 
     downloadName() {
       return 'cookie-cutter';
+    },
+
+    destroy() {
+      textPicker?.destroy();
     },
   };
 }

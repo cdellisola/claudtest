@@ -293,8 +293,14 @@ function buildCookie(w: any, msg: Extract<BuildRequest, { tool: 'cookie' }>): Pa
     const c = track(new CrossSection(g, 'EvenOdd'));
     detail = detail ? track(detail.add(c)) : c;
   }
+  // Optional mirrored text merged into the engraving.
+  for (const g of msg.text) {
+    const c = track(new CrossSection(g, 'EvenOdd'));
+    detail = detail ? track(detail.add(c)) : c;
+  }
   const bb = glyphsBBox(msg.graphic);
   const halfW = (bb.maxX - bb.minX) / 2;
+  const halfH = (bb.maxY - bb.minY) / 2;
 
   const gap = p.unified ? 0 : p.clearance;
 
@@ -316,32 +322,70 @@ function buildCookie(w: any, msg: Extract<BuildRequest, { tool: 'cookie' }>): Pa
     pattern = track(pattern.add(relief));
   }
 
-  // Optional alignment pin (on the pattern) + socket hole.
+  // Optional alignment pin: a socket hole in the pattern + a SEPARATE cylinder
+  // (printed apart and inserted later — never overlapping the other objects).
+  let pinPart: any = null;
   if (p.pin) {
-    const pinSolid = track(
-      track(Manifold.extrude(track(CrossSection.circle(Math.max(0.5, p.pinD / 2), 48).translate([p.pinX, p.pinY])), Math.max(0.2, p.pinH))).translate(
-        [0, 0, p.patternHeight],
-      ),
-    );
-    pattern = track(pattern.add(pinSolid));
     const hole = track(
       track(Manifold.extrude(track(CrossSection.circle(Math.max(0.5, p.holeD / 2), 48).translate([p.pinX, p.pinY])), Math.max(0.2, p.holeH) + 0.1)).translate(
         [0, 0, -0.05],
       ),
     );
     pattern = track(pattern.subtract(hole));
+    pinPart = track(Manifold.extrude(track(CrossSection.circle(Math.max(0.5, p.pinD / 2), 48)), Math.max(0.2, p.pinH)));
   }
 
-  // Lay the two molds side by side (unless unified).
+  // Lay the parts out side by side (unless unified) so nothing overlaps.
   if (!p.unified) {
     housing = track(housing.translate([-(halfW + p.wall + 15), 0, 0]));
     pattern = track(pattern.translate([halfW + 15, 0, 0]));
+  }
+  if (pinPart) {
+    pinPart = track(pinPart.translate([0, halfH + Math.max(0.5, p.pinD / 2) + 20, 0]));
   }
 
   const parts: Part[] = [
     meshToPart(housing, 'stampo_esterno', p.housingColor),
     meshToPart(pattern, 'stampo_pattern', p.patternColor),
   ];
+  if (pinPart) parts.push(meshToPart(pinPart, 'perno', p.patternColor));
+  for (const o of cleanup) o?.delete?.();
+  return parts;
+}
+
+// ---------------------------------------------------------------------------
+// Text cookie cutter (word-shaped cutting wall + base handle flange)
+// ---------------------------------------------------------------------------
+function buildTextCutter(w: any, msg: Extract<BuildRequest, { tool: 'textcutter' }>): Part[] {
+  const { CrossSection, Manifold } = w;
+  const p = msg.params;
+  const cleanup: any[] = [];
+  const track = <T,>(o: T): T => {
+    cleanup.push(o);
+    return o;
+  };
+  if (!msg.graphic.length) throw new Error('Nessun testo.');
+
+  // Filled silhouette of the whole word.
+  let fill: any = null;
+  for (const r of msg.graphic.flat()) {
+    const c = track(new CrossSection([r], 'NonZero'));
+    fill = fill ? track(fill.add(c)) : c;
+  }
+
+  const wall = Math.max(0.4, p.wall);
+  // Cutting wall: a thin band just inside the outline.
+  const wallBand = track(fill.subtract(track(fill.offset(-wall, 'Round', 2, 0))));
+  let solid = track(Manifold.extrude(wallBand, p.cutterHeight));
+
+  // Base handle flange: a wider band at the bottom for grip/strength.
+  if (p.flangeExt > 0 && p.flangeHeight > 0) {
+    const flangeBand = track(track(fill.offset(p.flangeExt, 'Round', 2, 0)).subtract(track(fill.offset(-wall, 'Round', 2, 0))));
+    const flange = track(Manifold.extrude(flangeBand, p.flangeHeight));
+    solid = track(solid.add(flange));
+  }
+
+  const parts: Part[] = [meshToPart(solid, 'taglierina', p.color)];
   for (const o of cleanup) o?.delete?.();
   return parts;
 }
@@ -358,7 +402,9 @@ self.onmessage = async (e: MessageEvent<BuildRequest>) => {
           ? buildInitial(w, msg)
           : msg.tool === 'cookie'
             ? buildCookie(w, msg)
-            : buildNametag(w, msg);
+            : msg.tool === 'textcutter'
+              ? buildTextCutter(w, msg)
+              : buildNametag(w, msg);
     const transfer: Transferable[] = [];
     for (const part of parts) transfer.push(part.vertProperties.buffer, part.triVerts.buffer);
     (self as unknown as Worker).postMessage({ type: 'parts', parts }, transfer);
