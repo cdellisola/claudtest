@@ -116,8 +116,10 @@ export interface CookieParams {
 export interface TextCutterParams {
   wall: number; // cutting wall thickness
   cutterHeight: number; // height of the cutting wall
-  flangeExt: number; // how far the base handle flange extends outward
-  flangeHeight: number; // height of the base flange
+  frameMargin: number; // gap between the letters and the outer support frame
+  supportHeight: number; // height of the base support (frame + grid)
+  supportSpacing: number; // grid spacing of the support bars
+  supportGrid: boolean; // add the internal support grid (holds counters/islands)
   color: RGB;
 }
 

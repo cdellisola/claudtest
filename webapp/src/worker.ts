@@ -366,23 +366,42 @@ function buildTextCutter(w: any, msg: Extract<BuildRequest, { tool: 'textcutter'
   };
   if (!msg.graphic.length) throw new Error('Nessun testo.');
 
-  // Filled silhouette of the whole word.
-  let fill: any = null;
-  for (const r of msg.graphic.flat()) {
-    const c = track(new CrossSection([r], 'NonZero'));
-    fill = fill ? track(fill.add(c)) : c;
-  }
-
   const wall = Math.max(0.4, p.wall);
-  // Cutting wall: a thin band just inside the outline.
-  const wallBand = track(fill.subtract(track(fill.offset(-wall, 'Round', 2, 0))));
+
+  // True glyph shape (keeps counters like O/a/A) → cutting walls along every
+  // contour, inner ones included.
+  let shape: any = null;
+  for (const g of msg.graphic) {
+    const c = track(new CrossSection(g, 'EvenOdd'));
+    shape = shape ? track(shape.add(c)) : c;
+  }
+  const wallBand = track(shape.subtract(track(shape.offset(-wall, 'Round', 2, 0))));
   let solid = track(Manifold.extrude(wallBand, p.cutterHeight));
 
-  // Base handle flange: a wider band at the bottom for grip/strength.
-  if (p.flangeExt > 0 && p.flangeHeight > 0) {
-    const flangeBand = track(track(fill.offset(p.flangeExt, 'Round', 2, 0)).subtract(track(fill.offset(-wall, 'Round', 2, 0))));
-    const flange = track(Manifold.extrude(flangeBand, p.flangeHeight));
-    solid = track(solid.add(flange));
+  // Base support: an outer frame + optional internal grid that ties all the
+  // letters and the floating inner islands (counters) into one piece.
+  if (p.supportHeight > 0) {
+    const bb = glyphsBBox(msg.graphic);
+    const cx = (bb.minX + bb.maxX) / 2;
+    const cy = (bb.minY + bb.maxY) / 2;
+    const m = Math.max(0, p.frameMargin) + wall;
+    const W = bb.maxX - bb.minX + 2 * m;
+    const H = bb.maxY - bb.minY + 2 * m;
+
+    const outer = track(CrossSection.square([W, H], true).translate([cx, cy]));
+    const inner = track(CrossSection.square([W - 2 * wall, H - 2 * wall], true).translate([cx, cy]));
+    let support2D: any = track(outer.subtract(inner));
+
+    if (p.supportGrid) {
+      const spacing = Math.max(3, p.supportSpacing);
+      for (let x = cx - W / 2 + spacing; x < cx + W / 2; x += spacing) {
+        support2D = track(support2D.add(track(CrossSection.square([wall, H], true).translate([x, cy]))));
+      }
+      for (let y = cy - H / 2 + spacing; y < cy + H / 2; y += spacing) {
+        support2D = track(support2D.add(track(CrossSection.square([W, wall], true).translate([cx, y]))));
+      }
+    }
+    solid = track(solid.add(track(Manifold.extrude(support2D, p.supportHeight))));
   }
 
   const parts: Part[] = [meshToPart(solid, 'taglierina', p.color)];

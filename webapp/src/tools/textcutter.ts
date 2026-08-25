@@ -13,31 +13,40 @@ export function createTextCutterTool(): Tool {
   let picker: FontPicker;
   const q = <T extends HTMLElement = HTMLElement>(id: string) => root.querySelector<T>('#' + id)!;
   const num = (id: string) => parseFloat(q<HTMLInputElement>(id).value);
+  const checked = (id: string) => q<HTMLInputElement>(id).checked;
 
   return {
     id: 'textcutter',
     name: 'Taglierina Scritte',
-    subtitle: 'Taglierina a forma di parola: parete di taglio + flangia di presa.',
+    subtitle: 'Taglierina a forma di parola, con supporti che tengono insieme le lettere.',
     available: true,
     usesGrid: true,
 
     mount(body, onChange) {
       root = body;
       body.innerHTML = `
-        <label class="field"><span>Testo</span><input id="tc-text" type="text" value="CIAO" /></label>
+        <label class="field"><span>Testo</span><input id="tc-text" type="text" value="GlowLab3D" /></label>
         <div class="field"><span>Font</span><div id="tc-font"></div></div>
         <div class="grid">
           <label class="field"><span>Dimensione</span><input id="tc-size" type="number" value="40" min="10" step="1" /></label>
           <label class="field"><span>Spaziatura</span><input id="tc-spacing" type="number" value="1" min="0.5" max="2" step="0.05" /></label>
           <label class="field"><span>Spessore parete</span><input id="tc-wall" type="number" value="1" min="0.4" step="0.1" /></label>
           <label class="field"><span>Altezza taglio</span><input id="tc-ch" type="number" value="15" min="2" step="0.5" /></label>
-          <label class="field"><span>Flangia (larghezza)</span><input id="tc-fe" type="number" value="3" min="0" step="0.5" /></label>
-          <label class="field"><span>Flangia (altezza)</span><input id="tc-fh" type="number" value="3" min="0" step="0.5" /></label>
         </div>
+
+        <div class="toggles">
+          <label><input id="tc-sg" type="checkbox" checked /> Griglia di supporto</label>
+        </div>
+        <div class="grid">
+          <label class="field"><span>Margine cornice</span><input id="tc-fm" type="number" value="3" min="0" step="0.5" /></label>
+          <label class="field"><span>Altezza supporti</span><input id="tc-sh" type="number" value="2" min="0" step="0.5" /></label>
+          <label class="field"><span>Passo griglia</span><input id="tc-ss" type="number" value="8" min="3" step="1" /></label>
+        </div>
+
         <div class="colors">
           <label class="field"><span>Colore</span><input id="tc-col" type="color" value="#8fb4d8" /></label>
         </div>
-        <p class="hint">La taglierina taglia il contorno della parola; la flangia alla base serve per la presa e la rigidità.</p>`;
+        <p class="hint">La cornice + griglia alla base tengono unite lettere e "isole" interne (cerchio della O, ecc.). Riduci il passo se un'isola resta staccata.</p>`;
 
       picker = createFontPicker({ preferName: 'Anton', onChange });
       q('tc-font').appendChild(picker.el);
@@ -60,8 +69,10 @@ export function createTextCutterTool(): Tool {
         params: {
           wall: num('tc-wall'),
           cutterHeight: num('tc-ch'),
-          flangeExt: num('tc-fe'),
-          flangeHeight: num('tc-fh'),
+          frameMargin: num('tc-fm'),
+          supportHeight: num('tc-sh'),
+          supportSpacing: num('tc-ss'),
+          supportGrid: checked('tc-sg'),
           color: hexToRgb(q<HTMLInputElement>('tc-col').value),
         },
       };
