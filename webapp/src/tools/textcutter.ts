@@ -49,8 +49,10 @@ export function createTextCutterTool(): Tool {
 
     buildRequest(): BuildRequest | null {
       const font = fonts.find((f) => f.id === picker.getSelectedId()) ?? fonts[0];
-      const glyphs = textToGlyphs(q<HTMLInputElement>('tc-text').value, font.font, num('tc-size'), num('tc-spacing'));
-      if (!glyphs.length) return null;
+      const raw = textToGlyphs(q<HTMLInputElement>('tc-text').value, font.font, num('tc-size'), num('tc-spacing'));
+      if (!raw.length) return null;
+      // Mirror horizontally so the cut reads correctly.
+      const glyphs = raw.map((gl) => gl.map((r) => r.map((pt) => [-pt[0], pt[1]] as [number, number])));
       return {
         type: 'build',
         tool: 'textcutter',
