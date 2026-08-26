@@ -8,7 +8,7 @@ import { createInterlockTool } from './tools/interlock';
 import { createInitialTool } from './tools/initial';
 import { createCookieTool } from './tools/cookie';
 import { createTextCutterTool } from './tools/textcutter';
-import { LOGO_SVG } from './logo';
+import { LOGO_MARK_SVG, LOGO_LOCKUP_SVG } from './logo';
 import type { Tool } from './tool';
 import type { BuildResponse, Part } from './types';
 
@@ -103,8 +103,8 @@ function buildHome() {
   ).join('');
   homeEl.innerHTML = `
     <div class="home-inner">
-      <div class="home-logo">${LOGO_SVG}</div>
-      <h1 class="home-title">GlowLab3D <span>Studio</span></h1>
+      <div class="home-lockup">${LOGO_LOCKUP_SVG}</div>
+      <p class="home-eyebrow">Studio</p>
       <p class="home-sub">Crea modelli stampabili pronti da esportare in 3MF: targhette, scritte a incastro,
         iniziali con magneti, formine per biscotti e taglierine. Scegli una funzione per iniziare.</p>
       <div class="home-cards">${cards}</div>
@@ -181,7 +181,7 @@ downloadBtn.addEventListener('click', () => {
 });
 
 // --- Boot ----------------------------------------------------------------
-brandLogoEl.innerHTML = LOGO_SVG;
+brandLogoEl.innerHTML = LOGO_MARK_SVG;
 buildHome();
 renderHome();
 setStatus('Inizializzo il motore 3D e carico i font…');
