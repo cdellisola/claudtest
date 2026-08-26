@@ -16,6 +16,10 @@ export interface TagParams {
   keychain: boolean;
   keychainRing: number; // outer diameter of the loop, mm
   keychainHole: number; // hole diameter, mm
+  keychainAuto: boolean; // auto-place at top-left (until the user moves it)
+  keychainX: number; // loop centre X (used when not auto)
+  keychainY: number; // loop centre Y (used when not auto)
+  keychainAngle: number; // rotation of the hook, degrees
   baseColor: RGB;
   outlineColor: RGB;
   textColor: RGB;

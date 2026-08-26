@@ -85,7 +85,7 @@ export function createInitialTool(): Tool {
       onChangeCb = onChange;
       apiRef = api;
       body.innerHTML = `
-        <label class="field"><span>Nome</span><input id="in-name" type="text" value="Sofia" /></label>
+        <label class="field"><span>Nome</span><input id="in-name" type="text" value="GlowLab3D" /></label>
         <div class="field"><span>Font nome (corsivo)</span><div id="in-namefont"></div></div>
         <div class="field"><span>Font iniziale (serif)</span><div id="in-initfont"></div></div>
 

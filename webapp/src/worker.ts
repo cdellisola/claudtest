@@ -70,25 +70,27 @@ function buildNametag(w: any, msg: Extract<BuildRequest, { tool: 'nametag' }>): 
 
   let baseSolid: any = params.useBase ? track(Manifold.extrude(baseCS, params.plateHeight)) : null;
 
+  let keychainMarker: { cx: number; cy: number } | null = null;
   if (params.keychain) {
     const bb = glyphsBBox(glyphs);
     const R = Math.max(1, params.keychainRing / 2);
     const hR = Math.max(0.5, Math.min(R - 0.8, params.keychainHole / 2));
     const gap = 1;
-    const cxLoop = bb.minX - R * 0.3;
-    const cyLoop = bb.maxY + border + gap + R;
-    const outer = track(CrossSection.circle(R, 64).translate([cxLoop, cyLoop]));
-    const inner = track(CrossSection.circle(hR, 48).translate([cxLoop, cyLoop]));
-    const annulus = track(outer.subtract(inner));
-    const bridgeTop = cyLoop;
-    const bridgeBottom = bb.maxY - params.fontSizeMm * 0.3;
-    const bridgeLen = Math.max(1, bridgeTop - bridgeBottom);
+    // Loop centre: auto (top-left) until the user drags/edits it.
+    const cx = params.keychainAuto ? bb.minX - R * 0.3 : params.keychainX;
+    const cy = params.keychainAuto ? bb.maxY + border + gap + R : params.keychainY;
+    keychainMarker = { cx, cy };
+
+    // Build the hook around the origin: disc + a bridge pointing -Y, long enough
+    // to reach into the base; then subtract the hole LAST so it's always clear.
+    const reach = R + border + gap + params.fontSizeMm * 0.6;
     const bridgeW = Math.max(2, R * 0.9);
-    const bridge = track(
-      CrossSection.square([bridgeW, bridgeLen], true).translate([cxLoop, (bridgeTop + bridgeBottom) / 2]),
-    );
-    const loopCS = track(annulus.add(bridge));
-    const loopSolid = track(Manifold.extrude(loopCS, params.plateHeight));
+    const disc = track(CrossSection.circle(R, 64));
+    const bridge = track(CrossSection.square([bridgeW, reach], true).translate([0, R * 0.4 - reach / 2]));
+    let hook = track(disc.add(bridge));
+    hook = track(hook.subtract(track(CrossSection.circle(hR, 48))));
+    hook = track(track(hook.rotate(params.keychainAngle)).translate([cx, cy]));
+    const loopSolid = track(Manifold.extrude(hook, params.plateHeight));
     baseSolid = baseSolid ? track(baseSolid.add(loopSolid)) : loopSolid;
   }
 
@@ -105,6 +107,20 @@ function buildNametag(w: any, msg: Extract<BuildRequest, { tool: 'nametag' }>): 
   const textRaw = track(Manifold.extrude(textCS, Math.max(0.01, params.textHeight)));
   const textSolid = track(textRaw.translate([0, 0, params.plateHeight]));
   parts.push(meshToPart(textSolid, 'text', params.textColor));
+
+  // Preview-only draggable marker over the keychain loop.
+  if (keychainMarker) {
+    const R = Math.max(1, params.keychainRing / 2);
+    const disc = track(track(Manifold.extrude(track(CrossSection.circle(R, 48)), 2)).translate([0, 0, -1]));
+    parts.push({
+      ...meshToPart(disc, 'gancio', [230, 170, 90]),
+      gizmo: 'keychain',
+      gizmoAxes: 'xy',
+      gizmoPos: [keychainMarker.cx, keychainMarker.cy, params.plateHeight + 1.5],
+      preview: true,
+      opacity: 0.85,
+    });
+  }
 
   for (const o of cleanup) o?.delete?.();
   return parts;
