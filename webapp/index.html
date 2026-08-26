@@ -10,11 +10,7 @@
       <aside class="sidebar">
         <header class="brand">
           <div class="brand-row">
-            <svg class="brand-logo" viewBox="0 0 64 64" aria-hidden="true">
-              <polygon points="32,5 57,18.5 57,45.5 32,59 7,45.5 7,18.5" fill="none" stroke="#27c4c4" stroke-width="4" stroke-linejoin="round" />
-              <path d="M32,5 L32,32 M32,32 L7,18.5 M32,32 L57,18.5" fill="none" stroke="#27c4c4" stroke-width="4" stroke-linejoin="round" />
-              <path d="M44 22 C48 28 49 32 46 35 C43 38 38 37 37 33 C36.4 30 39 25 44 22 Z" fill="#27c4c4" />
-            </svg>
+            <span id="brandLogo" class="brand-logo"></span>
             <h1>GlowLab3D <span>Studio</span></h1>
           </div>
           <p>Generatore di modelli stampabili → 3MF</p>
@@ -30,6 +26,8 @@
         <canvas id="preview"></canvas>
       </main>
     </div>
+
+    <div id="home" class="home hidden"></div>
 
     <script type="module" src="/src/main.ts"></script>
   </body>

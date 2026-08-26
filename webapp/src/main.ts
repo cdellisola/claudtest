@@ -8,6 +8,7 @@ import { createInterlockTool } from './tools/interlock';
 import { createInitialTool } from './tools/initial';
 import { createCookieTool } from './tools/cookie';
 import { createTextCutterTool } from './tools/textcutter';
+import { LOGO_SVG } from './logo';
 import type { Tool } from './tool';
 import type { BuildResponse, Part } from './types';
 
@@ -18,6 +19,8 @@ const viewer = new Viewer($<HTMLCanvasElement>('preview'));
 const toolArea = $('toolArea');
 const statusEl = $('status');
 const downloadBtn = $<HTMLButtonElement>('download');
+const homeEl = $('home');
+const brandLogoEl = $('brandLogo');
 const setStatus = (s: string) => (statusEl.textContent = s);
 
 // Tool registry.
@@ -29,6 +32,15 @@ const TOOLS: Tool[] = [
   createTextCutterTool(),
 ];
 const COMING: { name: string; subtitle: string }[] = [];
+
+// Per-tool icon for the home cards.
+const ICONS: Record<string, string> = {
+  nametag: '🏷️',
+  interlock: '🧩',
+  initial: '🧲',
+  cookie: '🍪',
+  textcutter: '✂️',
+};
 
 let activeTool: Tool | null = null;
 let lastParts: Part[] = [];
@@ -80,6 +92,34 @@ viewer.onGizmoCommit = (id, x, y, z) => {
   build(false);
 };
 
+// --- Home landing --------------------------------------------------------
+function buildHome() {
+  const cards = TOOLS.map(
+    (t) => `<button class="home-card" type="button" data-id="${t.id}">
+      <span class="hc-icon">${ICONS[t.id] ?? '▪'}</span>
+      <b>${t.name}</b>
+      <span class="hc-sub">${t.subtitle}</span>
+    </button>`,
+  ).join('');
+  homeEl.innerHTML = `
+    <div class="home-inner">
+      <div class="home-logo">${LOGO_SVG}</div>
+      <h1 class="home-title">GlowLab3D <span>Studio</span></h1>
+      <p class="home-sub">Crea modelli stampabili pronti da esportare in 3MF: targhette, scritte a incastro,
+        iniziali con magneti, formine per biscotti e taglierine. Scegli una funzione per iniziare.</p>
+      <div class="home-cards">${cards}</div>
+    </div>`;
+  homeEl.querySelectorAll<HTMLButtonElement>('.home-card').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const tool = TOOLS.find((t) => t.id === btn.dataset.id);
+      if (tool) activate(tool);
+    });
+  });
+}
+
+const showHome = () => homeEl.classList.remove('hidden');
+const hideHome = () => homeEl.classList.add('hidden');
+
 // --- Portal navigation ---------------------------------------------------
 function renderHome() {
   if (activeTool) {
@@ -90,6 +130,7 @@ function renderHome() {
   lastParts = [];
   setStatus('');
   viewer.setGrid(false);
+  showHome();
   toolArea.innerHTML = `<p class="portal-intro">Scegli una funzione:</p>`;
   const list = document.createElement('div');
   list.className = 'tool-list';
@@ -111,6 +152,7 @@ function renderHome() {
 }
 
 function activate(tool: Tool) {
+  hideHome();
   if (activeTool) activeTool.destroy?.();
   activeTool = tool;
   downloadBtn.disabled = true;
@@ -139,6 +181,8 @@ downloadBtn.addEventListener('click', () => {
 });
 
 // --- Boot ----------------------------------------------------------------
+brandLogoEl.innerHTML = LOGO_SVG;
+buildHome();
 renderHome();
 setStatus('Inizializzo il motore 3D e carico i font…');
 const onFontLoaded = () => refreshAllPickers();
