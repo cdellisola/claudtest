@@ -100,6 +100,9 @@ export interface InterlockParams {
 export interface CookieParams {
   wall: number; // housing wall thickness
   housingHeight: number;
+  bevel: boolean; // taper the cutting edge to a thin blade
+  bevelHeight: number; // how tall the tapered section is
+  edgeWidth: number; // thickness at the very top (the blade)
   patternHeight: number;
   iconThickness: number; // engraved/relief depth of the graphic
   clearance: number; // mating clearance (separated molds)
@@ -120,6 +123,9 @@ export interface CookieParams {
 export interface TextCutterParams {
   wall: number; // cutting wall thickness
   cutterHeight: number; // height of the cutting wall
+  bevel: boolean; // taper the cutting edge to a thin blade
+  bevelHeight: number; // how tall the tapered section is
+  edgeWidth: number; // thickness at the very top (the blade)
   borderExt: number; // outer border/flange width (follows the letters)
   borderHeight: number; // outer border height
   supportGrid: boolean; // add support bars inside the counters (holds islands)

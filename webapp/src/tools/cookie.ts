@@ -141,11 +141,19 @@ export function createCookieTool(): Tool {
         <div class="grid">
           <label class="field"><span>Larghezza (mm)</span><input id="ck-w" type="number" value="60" min="10" step="1" /></label>
           <label class="field"><span>Altezza (mm)</span><input id="ck-h" type="number" value="60" min="10" step="1" /></label>
-          <label class="field"><span>Spessore pareti</span><input id="ck-wall" type="number" value="2" min="0.5" step="0.5" /></label>
+          <label class="field"><span>Spessore pareti</span><input id="ck-wall" type="number" value="1.2" min="0.5" step="0.1" /></label>
           <label class="field"><span>Altezza stampo esterno</span><input id="ck-hh" type="number" value="15" min="2" step="0.5" /></label>
           <label class="field"><span>Altezza pattern</span><input id="ck-ph" type="number" value="5" min="1" step="0.5" /></label>
           <label class="field"><span>Prof. incisione</span><input id="ck-it" type="number" value="1.4" min="0.2" step="0.1" /></label>
           <label class="field"><span>Tolleranza incastro</span><input id="ck-cl" type="number" value="0.3" min="0" step="0.05" /></label>
+        </div>
+
+        <div class="toggles">
+          <label><input id="ck-bevel" type="checkbox" checked /> Bordo di taglio smussato</label>
+        </div>
+        <div class="grid">
+          <label class="field"><span>Altezza smusso (mm)</span><input id="ck-bevh" type="number" value="6" min="0" step="0.5" /></label>
+          <label class="field"><span>Filo di taglio (mm)</span><input id="ck-edge" type="number" value="0.6" min="0.2" step="0.1" /></label>
         </div>
 
         <div class="toggles">
@@ -235,6 +243,9 @@ export function createCookieTool(): Tool {
         params: {
           wall: num('ck-wall'),
           housingHeight: num('ck-hh'),
+          bevel: checked('ck-bevel'),
+          bevelHeight: num('ck-bevh'),
+          edgeWidth: num('ck-edge'),
           patternHeight: num('ck-ph'),
           iconThickness: num('ck-it'),
           clearance: num('ck-cl'),

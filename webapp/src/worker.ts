@@ -42,6 +42,53 @@ function glyphsBBox(glyphs: Ring[][]) {
   return { minX, minY, maxX, maxY };
 }
 
+// Build a wall that keeps its full thickness at the base and tapers to a thin
+// blade at the top — the cutting edge (like a real cookie cutter). The wall is
+// centred on `centerOffset` of `src` (a filled contour): at any height the band
+// spans src.offset(centerOffset ± t/2), so the taper is symmetric and the sharp
+// edge stays on the wall's centreline. The bevel occupies the top `bevelH`; the
+// rest is a straight full-thickness body. Approximated as thin stacked layers.
+function taperedWall(
+  w: any,
+  track: <T>(o: T) => T,
+  src: any,
+  centerOffset: number,
+  wall: number,
+  edge: number,
+  totalH: number,
+  bevelH: number,
+  layers: number,
+): any {
+  const { Manifold } = w;
+  const bandAt = (t: number): any => {
+    const outer = track(src.offset(centerOffset + t / 2, 'Round', 2, 0));
+    const inner = track(src.offset(centerOffset - t / 2, 'Round', 2, 0));
+    return track(outer.subtract(inner));
+  };
+  const straightH = Math.max(0, totalH - bevelH);
+  let solid: any = straightH > 0.01 ? track(Manifold.extrude(bandAt(wall), straightH)) : null;
+  const dz = bevelH / layers;
+  for (let i = 0; i < layers; i++) {
+    const fm = (i + 0.5) / layers; // 0 at bevel base → 1 at the tip
+    const t = wall * (1 - fm) + edge * fm;
+    const seg = track(
+      track(Manifold.extrude(bandAt(t), dz + 0.02)).translate([0, 0, straightH + i * dz - 0.01]),
+    );
+    solid = solid ? track(solid.add(seg)) : seg;
+  }
+  return solid;
+}
+
+// Resolve the bevel settings against the wall/height, clamping to safe values.
+function bevelPlan(p: { bevel: boolean; bevelHeight: number; edgeWidth: number }, wall: number, height: number) {
+  const edge = Math.max(0.2, Math.min(p.edgeWidth, wall - 0.1));
+  const bevelH = Math.max(0, Math.min(p.bevelHeight, height - 0.4));
+  const on = p.bevel && bevelH > 0.1 && edge < wall - 0.05;
+  const layers = Math.max(4, Math.min(16, Math.round(bevelH / 0.5)));
+  return { on, edge, bevelH, layers };
+}
+
+
 // ---------------------------------------------------------------------------
 // Name tag
 // ---------------------------------------------------------------------------
@@ -320,11 +367,14 @@ function buildCookie(w: any, msg: Extract<BuildRequest, { tool: 'cookie' }>): Pa
 
   const gap = p.unified ? 0 : p.clearance;
 
-  // Housing mold: a wall following the silhouette.
+  // Housing mold: a wall following the silhouette, with a beveled cutting edge.
   const inner = track(fill.offset(gap, 'Round', 2, 0));
   const outer = track(fill.offset(gap + p.wall, 'Round', 2, 0));
   const wallCS = track(outer.subtract(inner));
-  let housing = track(Manifold.extrude(wallCS, p.housingHeight));
+  const bv = bevelPlan(p, p.wall, p.housingHeight);
+  let housing = bv.on
+    ? taperedWall(w, track, fill, gap + p.wall / 2, p.wall, bv.edge, p.housingHeight, bv.bevelH, bv.layers)
+    : track(Manifold.extrude(wallCS, p.housingHeight));
 
   // Pattern mold: solid silhouette with the graphic engraved (or raised).
   let pattern = track(Manifold.extrude(fill, p.patternHeight));
@@ -396,9 +446,13 @@ function buildTextCutter(w: any, msg: Extract<BuildRequest, { tool: 'textcutter'
     fill = fill ? track(fill.add(c)) : c;
   }
 
-  // Cutting walls along every contour (outer + inner counters).
+  // Cutting walls along every contour (outer + inner counters), with a beveled
+  // cutting edge that tapers to a thin blade at the top.
   const wallBand = track(shape.subtract(track(shape.offset(-wall, 'Round', 2, 0))));
-  let solid = track(Manifold.extrude(wallBand, p.cutterHeight));
+  const bv = bevelPlan(p, wall, p.cutterHeight);
+  let solid = bv.on
+    ? taperedWall(w, track, shape, -wall / 2, wall, bv.edge, p.cutterHeight, bv.bevelH, bv.layers)
+    : track(Manifold.extrude(wallBand, p.cutterHeight));
 
   // Outer border / flange following the letters (as before).
   if (p.borderExt > 0 && p.borderHeight > 0) {

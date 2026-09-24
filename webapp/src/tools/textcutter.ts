@@ -30,10 +30,18 @@ export function createTextCutterTool(): Tool {
         <div class="grid">
           <label class="field"><span>Dimensione</span><input id="tc-size" type="number" value="40" min="10" step="1" /></label>
           <label class="field"><span>Spaziatura</span><input id="tc-spacing" type="number" value="1" min="0.5" max="2" step="0.05" /></label>
-          <label class="field"><span>Spessore parete</span><input id="tc-wall" type="number" value="1" min="0.4" step="0.1" /></label>
+          <label class="field"><span>Spessore parete</span><input id="tc-wall" type="number" value="0.8" min="0.4" step="0.1" /></label>
           <label class="field"><span>Altezza taglio</span><input id="tc-ch" type="number" value="15" min="2" step="0.5" /></label>
           <label class="field"><span>Bordo (larghezza)</span><input id="tc-be" type="number" value="3" min="0" step="0.5" /></label>
           <label class="field"><span>Bordo (altezza)</span><input id="tc-bh" type="number" value="3" min="0" step="0.5" /></label>
+        </div>
+
+        <div class="toggles">
+          <label><input id="tc-bevel" type="checkbox" checked /> Bordo di taglio smussato</label>
+        </div>
+        <div class="grid">
+          <label class="field"><span>Altezza smusso (mm)</span><input id="tc-bevh" type="number" value="6" min="0" step="0.5" /></label>
+          <label class="field"><span>Filo di taglio (mm)</span><input id="tc-edge" type="number" value="0.5" min="0.2" step="0.1" /></label>
         </div>
 
         <div class="toggles">
@@ -48,7 +56,7 @@ export function createTextCutterTool(): Tool {
         <div class="colors">
           <label class="field"><span>Colore</span><input id="tc-col" type="color" value="#8fb4d8" /></label>
         </div>
-        <p class="hint">I supporti stanno solo dentro le "isole" (cerchio della O, ecc.), bassi e larghi, senza entrare nelle pareti di taglio. Riduci il passo se un'isola resta staccata.</p>`;
+        <p class="hint">Il bordo di taglio è assottigliato a lama verso l'alto. I supporti stanno solo dentro le "isole" (cerchio della O, ecc.), bassi e larghi, senza entrare nelle pareti di taglio. Riduci il passo se un'isola resta staccata.</p>`;
 
       picker = createFontPicker({ preferName: 'Anton', onChange });
       q('tc-font').appendChild(picker.el);
@@ -71,6 +79,9 @@ export function createTextCutterTool(): Tool {
         params: {
           wall: num('tc-wall'),
           cutterHeight: num('tc-ch'),
+          bevel: checked('tc-bevel'),
+          bevelHeight: num('tc-bevh'),
+          edgeWidth: num('tc-edge'),
           borderExt: num('tc-be'),
           borderHeight: num('tc-bh'),
           supportGrid: checked('tc-sg'),
