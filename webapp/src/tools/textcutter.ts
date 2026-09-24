@@ -40,8 +40,8 @@ export function createTextCutterTool(): Tool {
           <label><input id="tc-bevel" type="checkbox" checked /> Bordo di taglio smussato</label>
         </div>
         <div class="grid">
-          <label class="field"><span>Altezza smusso (mm)</span><input id="tc-bevh" type="number" value="6" min="0" step="0.5" /></label>
-          <label class="field"><span>Filo di taglio (mm)</span><input id="tc-edge" type="number" value="0.5" min="0.2" step="0.1" /></label>
+          <label class="field"><span>Altezza smusso (mm)</span><input id="tc-bevh" type="number" value="2" min="0" step="0.5" /></label>
+          <label class="field"><span>Filo di taglio (mm)</span><input id="tc-edge" type="number" value="0.3" min="0.1" step="0.1" /></label>
         </div>
 
         <div class="toggles">

@@ -81,10 +81,10 @@ function taperedWall(
 
 // Resolve the bevel settings against the wall/height, clamping to safe values.
 function bevelPlan(p: { bevel: boolean; bevelHeight: number; edgeWidth: number }, wall: number, height: number) {
-  const edge = Math.max(0.2, Math.min(p.edgeWidth, wall - 0.1));
+  const edge = Math.max(0.1, Math.min(p.edgeWidth, wall - 0.1));
   const bevelH = Math.max(0, Math.min(p.bevelHeight, height - 0.4));
   const on = p.bevel && bevelH > 0.1 && edge < wall - 0.05;
-  const layers = Math.max(4, Math.min(16, Math.round(bevelH / 0.5)));
+  const layers = Math.max(6, Math.min(24, Math.round(bevelH / 0.2)));
   return { on, edge, bevelH, layers };
 }
 
